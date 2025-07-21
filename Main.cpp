@@ -7,31 +7,36 @@ int main(){
     
     const auto& board = b.getBoard();
 
-    b.printBoard();
     std::cout << b << std::endl;
+    
+    int numberOfTrue = 0;
 
-    for(size_t row = 0; row < 8; row++){
-        for(size_t col = 0; col < 8; col++){
-            const Square& squareRef = (*board)[row][col];
-            std::cout << squareRef;
-            std::cout << "\nOccupied: " << std::boolalpha << squareRef.isOccupied();
-            std::cout << "\nSquare Color: " << colorToString(squareRef.getSquareColor()) << "\n" << std::endl;
-        }
-    }
-    
-    
-    
-    for(size_t row = 0; row < 8; row++){
-        for(size_t col = 0; col < 8; col++){
-            Piece* piece = b.getPieceAt(row, col); // returns nullptr if no piece.
-            if(piece) {
-                std::cout << piece->getSquarePosition() << std::endl;
-            } else {
-                std::cout << "Empty square at row " << row << ", col " << col << std::endl;
+    for(size_t row = 0; row < Board::MAX_ROWS; row++){
+        for(size_t col = 0; col < Board::MAX_COLS; col++){
+
+            const Piece* p = b.getPieceAt(row, col);
+            if(p){
+                if(p->getType() == Piece_T::PAWN){
+                    const Square& fromSquare = p->getSquarePosition();
+                    std::cout << "Testing pawn at " << fromSquare << " (color: " << (p->getColor() == Color_T::WHITE ? "WHITE" : "BLACK") << ")" << std::endl;
+                    for(size_t rowI = 0; rowI < Board::MAX_ROWS; rowI++){
+                        for(size_t colI = 0; colI < Board::MAX_COLS; colI++){
+                            const Square& toSquare = (*board)[rowI][colI];
+
+                            bool validMove = p->isValidMove(toSquare);
+
+                            if(validMove){
+                                std::cout << "Valid move: " << fromSquare << " to " << toSquare << std::endl;
+                                numberOfTrue++;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
-    
+
+    std::cout << "Total Possible Moves: " << numberOfTrue;
 
     return 0;
 }

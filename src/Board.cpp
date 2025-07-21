@@ -35,7 +35,7 @@ Board::Board(){
         for(size_t col = 0; col < MAX_COLS; ++col) {
             // Create square with alternating colors
             Color_T squareColor = ((row + col) % 2 == 0) ? Color_T::WHITE : Color_T::BLACK;
-            (*board)[row][col] = Square{squareColor, row + 1, col + 1};
+            (*board)[row][col] = Square{squareColor, static_cast<unsigned int>(row + 1), static_cast<unsigned int>(col + 1)};
             
             // Get piece character from mapping
             char pieceChar = initBoardMapping[row][col];

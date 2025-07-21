@@ -19,6 +19,10 @@ void Piece::setColor(Color_T){
     this->color = color;
 }
 
+const Board& Piece::getBoard() const {
+    return boardRef;
+}
+
 const Square& Piece::getSquarePosition() const {
     return positionRef;
 }

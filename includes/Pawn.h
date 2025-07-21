@@ -6,6 +6,8 @@
 
 class Pawn final : public Piece {
 
+    
+
     public:
         Pawn(Piece_T pieceType, Color_T pieceColor, const Square& pieceSquareRef, const Board& pieceBoardRef); // Same as base but need to set has moved.
 
@@ -16,7 +18,12 @@ class Pawn final : public Piece {
         virtual std::string toString() const override;
 
     private:
-        bool _isValidTwoStepMove(const Square& otherSquare) const;
+        struct MoveCoordsData {
+            unsigned int fromRow, fromCol;
+            unsigned int toRow, toCol;
+        };
+        bool _isValidTwoStepMove(const Square& thisSquare, Color_T thisColor, const Board& boardRef, const MoveCoordsData& data, bool otherSquareOccupied) const;
+        bool _isTwoStepMove(const Square& thisSquare, Color_T thisColor, const Board& boardRef, const MoveCoordsData& data, bool otherSquareOccupied) const;
 
         bool hasMoved;
 };

@@ -20,6 +20,8 @@ class Piece {
         Color_T getColor() const;
         void setColor(Color_T);
 
+        const Board& getBoard() const;
+
         const Square& getSquarePosition() const;
 
         unsigned int getValue() const; // return enum class value for the piece type; baked in.

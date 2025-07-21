@@ -67,6 +67,7 @@ bool Square::operator==(const Square& right) const {
     if(this->row != right.getRow() || this->col != right.getCol()) {
         return false;
     }
+    return true;
 }
 
 // Just print square position, e.g. "E4".

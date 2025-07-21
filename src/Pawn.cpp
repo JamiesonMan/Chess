@@ -2,6 +2,7 @@
 #include "Board.h" // To verify pawn moves need to know board state
 #include <string>
 #include <sstream>
+#include <iostream>
 
 Pawn::Pawn(Piece_T pieceType, Color_T pieceColor, const Square& pieceSquareRef, const Board& pieceBoardRef)
     : Piece(pieceType, pieceColor, pieceSquareRef, pieceBoardRef) {
@@ -15,41 +16,83 @@ void Pawn::setHasMoved(bool newHasMoved){
 bool Pawn::getHasMoved() const { return hasMoved; }
 
 bool Pawn::isValidMove(const Square& otherSquare) const {
+    const Square& thisSquare{this->getSquarePosition()};
+    Color_T thisColor = this->getColor();
 
-    // Cannot move to same position.
-    if(otherSquare == this->getSquarePosition()){ return false; }
+    const Board& boardRef = this->getBoard();
 
-    // Determine if 2 steps forward is allowed. e.g. e4-e6 (white) or e7-e5 (black)
-    if(_isValidTwoStepMove(otherSquare) == false){
+    MoveCoordsData data{thisSquare.getRow(), thisSquare.getCol(), otherSquare.getRow(), otherSquare.getCol()};
+    
+    if(data.fromCol > 8 || data.toCol > 8 || data.fromCol < 1 || data.toCol < 1) {
+        std::cout << "Invalid column data: fromCol=" << data.fromCol << ", toCol=" << data.toCol << std::endl;
         return false;
     }
 
-    return true;
-}
+    bool otherSquareOccupied{otherSquare.isOccupied()};
 
-bool Pawn::_isValidTwoStepMove(const Square& otherSquare) const {
-    const Square& thisSquare{this->getSquarePosition()};
-    Color_T thisColor = this->getColor();
-    unsigned int thisRow{thisSquare.getRow()};
-    unsigned int thisCol{thisSquare.getCol()};
+    // Cannot move to the current position.
+    if(otherSquare == this->getSquarePosition()){ return false; }
 
-    unsigned int otherRow{otherSquare.getRow()};
-    unsigned int otherCol{otherSquare.getCol()};
-
-    if(this->getHasMoved()) { return false; } // Can only two step once.
-
-    switch(thisColor){
-        case Color_T::BLACK:
-            
-            if(((otherRow == (thisRow + 2)) && (otherCol == thisCol)) && (!otherSquare.isOccupied() && 1)){ return true; }
-
-        case Color_T::WHITE:
-            if(otherRow != (thisRow - 2)) { return false; }
+    // Check if it's a two step move and if it's valid
+    if(_isTwoStepMove(thisSquare, thisColor, boardRef, data, otherSquareOccupied)){
+        return _isValidTwoStepMove(thisSquare, thisColor, boardRef, data, otherSquareOccupied);
     }
 
-    return true;
+    return false;
 }
 
+bool Pawn::_isValidTwoStepMove(const Square& thisSquare, Color_T thisColor, const Board& boardRef, const MoveCoordsData& data, bool otherSquareOccupied) const {
+
+    if(this->getHasMoved()) { 
+        std::cout << "Pawn has already moved" << std::endl;
+        return false; 
+    } // Can only two step once.
+    switch(thisColor){
+        case Color_T::BLACK: {
+            // Check bounds and get middle square (1-8 indexing)
+            if(data.fromRow + 1 > 8 || data.fromCol > 8) return false;
+            const Piece* midPiece = boardRef.getPieceAt(data.fromRow, data.fromCol - 1);
+            bool midSquareOccupied = (midPiece != nullptr);
+
+            if((data.toRow == (data.fromRow + 2)) && (data.toCol == data.fromCol)){ // It's a two step move.
+                if(!otherSquareOccupied && !midSquareOccupied){ // The two spaces are free to move in.
+                    // Need to still implement a function to determine if it would put the kind in check.
+                    return true; 
+                }
+            }
+            return false;
+        }
+        
+        case Color_T::WHITE: {
+            // Check bounds and get middle square (1-8 indexing)
+            if(data.fromRow < 2 || data.fromCol > 8) {
+                std::cout << "White pawn bounds check failed: fromRow=" << data.fromRow << ", fromCol=" << data.fromCol << std::endl;
+                return false;
+            }
+            const Piece* midPiece = boardRef.getPieceAt(data.fromRow - 2, data.fromCol - 1);
+            bool midSquareOccupied = (midPiece != nullptr);
+
+            if((data.toRow == (data.fromRow - 2)) && (data.toCol == data.fromCol)){ // It's a two step move.
+                if(!otherSquareOccupied && !midSquareOccupied){ // The two spaces are free to move in.
+                    // *** Need to still implement a function to determine if it would put the kind in check. ***
+                    return true; 
+                }
+            }
+            return false;
+        }
+    }
+}
+
+bool Pawn::_isTwoStepMove(const Square& thisSquare, Color_T thisColor, const Board& boardRef, const MoveCoordsData& data, bool otherSquareOccupied) const{
+    if(thisColor == Color_T::BLACK) {
+        // Black pawns move down (increasing row)
+        return (data.toRow == (data.fromRow + 2)) && (data.toCol == data.fromCol);
+    } else {
+        // White pawns move up (decreasing row)
+        return (data.toRow == (data.fromRow - 2)) && (data.toCol == data.fromCol);
+    }
+}   
+ 
 std::string Pawn::toString() const {
     std::ostringstream output;
     output << "Piece: Pawn\n";
