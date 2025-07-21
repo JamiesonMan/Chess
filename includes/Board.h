@@ -21,7 +21,7 @@ class Board final {
         static const size_t MIN_COLS{1};
 
         const std::unique_ptr<std::array<std::array<Square, MAX_COLS>, MAX_ROWS>>& getBoard();
-        Piece* getPieceAt(size_t row, size_t col) const;
+        const Piece* getPieceAt(size_t row, size_t col) const;
         void printBoard() const;
         std::string boardToString() const;
 

@@ -17,3 +17,15 @@ add_executable(Chess
     src/Square.cpp
     Main.cpp
 )
+
+add_executable(PawnTests
+    src/Board.cpp 
+    src/Colors.cpp 
+    src/Pawn.cpp 
+    src/Piece.cpp
+    src/Square.cpp
+    tests/pawn_tests/Main.cpp
+)
+
+enable_testing()
+add_test(NAME TestPawn COMMAND PawnTests)

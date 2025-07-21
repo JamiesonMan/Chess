@@ -54,7 +54,7 @@ const std::unique_ptr<std::array<std::array<Square, Board::MAX_COLS>, Board::MAX
     return board;
 }
 
-Piece* Board::getPieceAt(size_t row, size_t col) const {
+const Piece* Board::getPieceAt(size_t row, size_t col) const {
     if(row >= MAX_ROWS || col >= MAX_COLS) {
         return nullptr;
     }
