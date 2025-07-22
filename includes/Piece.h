@@ -23,6 +23,7 @@ class Piece {
         const Board& getBoard() const;
 
         const Square& getSquarePosition() const;
+        void setSquarePosition(const Square& newPosition);
 
         unsigned int getValue() const; // return enum class value for the piece type.
 
@@ -32,6 +33,6 @@ class Piece {
     private:
         Piece_T type;
         Color_T color;
-        const Square& positionRef;
+        const Square* positionRef;
         const Board& boardRef;
 };

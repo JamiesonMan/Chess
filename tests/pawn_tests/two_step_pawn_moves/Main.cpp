@@ -6,22 +6,20 @@ int main(){
     bool t1;
 
     const std::array<std::array<char, Board::MAX_COLS>, Board::MAX_ROWS> boardInit1 = {{
-            {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'},
-            {'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'},
             {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
             {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
             {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', 'p', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', 'P', 'P', ' ', ' ', ' '},
             {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-            {'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
-            {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '}
         }};
 
     Board b{boardInit1};
 
-    const auto& board = b.getBoard();
-
     std::cout << b << std::endl;
-    
+   
     int numberOfTrue = 0;
     int numberOfFalse = 0;
     // Loop through every position of board (64)
@@ -37,7 +35,7 @@ int main(){
                     // Loop through entire board.
                     for(size_t rowI = 0; rowI < Board::MAX_ROWS; rowI++){
                         for(size_t colI = 0; colI < Board::MAX_COLS; colI++){
-                            const Square& toSquare = board[rowI][colI];
+                            const Square& toSquare = b.getBoardAt(rowI, colI);
                             
                             bool validMove = p->isValidMove(toSquare); // Determine if this pawn has a valid move.
 
@@ -56,7 +54,7 @@ int main(){
     std::cout << "Total Impossible Moves: " << numberOfFalse << "\n";
     std::cout << "Total Possible Moves: " << numberOfTrue << std::endl;
 
-    if(numberOfTrue == 16) {
+    if(numberOfTrue == 34) {
         t1 = true;
     } else {
         t1 = false;

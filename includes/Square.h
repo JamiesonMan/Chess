@@ -2,7 +2,7 @@
 #include "Colors.h"
 #include <ostream>
 
-// Maps itself as row: [1-8] and col: [1-8]
+// Maps itself as row: [0-7] and col: [0-7]
 class Square final {
     friend std::ostream& operator<<(std::ostream& output, const Square& square);
 
@@ -16,8 +16,8 @@ class Square final {
         bool isOccupied() const;
         void setOccupied(bool);
 
-        static unsigned int rowToRank(unsigned int); // e.g. 1 = 1, 2 = 2, etc for symmetry.
-        static char colToFile(unsigned int); // e.g. 1 = 'a', 2 = 'b', etc.
+        static unsigned int rowToRank(unsigned int);
+        static char colToFile(unsigned int); // e.g. 0 = 'A', 1 = 'B', etc.
 
         bool operator==(const Square& right) const;
 

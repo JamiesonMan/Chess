@@ -7,6 +7,7 @@
 Pawn::Pawn(Piece_T pieceType, Color_T pieceColor, const Square& pieceSquareRef, const Board& pieceBoardRef)
     : Piece(pieceType, pieceColor, pieceSquareRef, pieceBoardRef) {
         setHasMoved(false);
+        setEnPassantCaptureStatus(false);
     }
 
 void Pawn::setHasMoved(bool newHasMoved){
@@ -15,10 +16,15 @@ void Pawn::setHasMoved(bool newHasMoved){
 
 bool Pawn::getHasMoved() const { return hasMoved; }
 
+void Pawn::setEnPassantCaptureStatus(bool newEnPassantCaptureStatus) {
+    enPassantCaptureStatus = newEnPassantCaptureStatus;
+}
+bool Pawn::getEnPassantCaptureStatus() const { return enPassantCaptureStatus; }
+
 bool Pawn::isValidMove(const Square& toSquare) const {
-    return getBoard().canPawnMoveTo(getSquarePosition(), toSquare, getColor(), getHasMoved());
+    return getBoard().validPawnMove(getSquarePosition(), toSquare, getColor(), getHasMoved());
 } 
- 
+
 std::string Pawn::toString() const {
     std::ostringstream output;
     output << "Piece: Pawn\n";

@@ -2,7 +2,7 @@
 #include <stdexcept>
 
 Piece::Piece(Piece_T pieceType, Color_T pieceColor, const Square& pieceSquareRef, const Board& pieceBoardRef)
-    : type{pieceType}, color{pieceColor}, positionRef{pieceSquareRef}, boardRef{pieceBoardRef} {
+    : type{pieceType}, color{pieceColor}, positionRef{&pieceSquareRef}, boardRef{pieceBoardRef} {
         
         if(pieceSquareRef.isOccupied()){
             throw std::invalid_argument("Error: A piece cannot be initialized where another piece already exists.");
@@ -24,7 +24,11 @@ const Board& Piece::getBoard() const {
 }
 
 const Square& Piece::getSquarePosition() const {
-    return positionRef;
+    return *positionRef;
+}
+
+void Piece::setSquarePosition(const Square& newPosition) {
+    positionRef = &newPosition;
 }
 
 unsigned int Piece::getValue() const {

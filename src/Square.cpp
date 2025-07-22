@@ -20,10 +20,8 @@ Square::Square(Color_T squareColor, unsigned int squareRow, unsigned int squareC
 unsigned int Square::rowToRank(unsigned int row){
     unsigned int arr[8] = { 8, 7, 6, 5, 4, 3, 2, 1 }; // Map the row to correct rank.
 
-    if(row <= 1) {
-        throw std::invalid_argument("Error: Row can't be <= 1.");
-    } else if (row >= 8) {
-        throw std::invalid_argument("Error: Row can't be >= 8.");
+    if(row > 7) {
+        throw std::invalid_argument("Error: Invalid Row value for square.");
     }
 
     return arr[row];

@@ -19,10 +19,10 @@ class Board final {
         Board(); // Eventually include option to start at a position, FEN.
         Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping);
 
-        const std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& getBoard();
+        const std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& getBoard() const;
 
-        Square& getBoardAt(size_t row, size_t col);
         const Square& getBoardAt(size_t row, size_t col) const;
+        Square& getBoardAt(size_t row, size_t col);
 
         const Piece* getPieceAt(size_t row, size_t col) const;
 
@@ -30,7 +30,15 @@ class Board final {
         std::string boardToString() const;
 
         // Move member function
-        bool canPawnMoveTo(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved) const;
+        bool validPawnMove(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved) const;
+
+        bool pawnCanPromote(const Square& to, Color_T color) const;
+
+        // Updates board and pieces.
+        void moveTo(Square& from, Square& to);
+
+        // Convert chess notation (e.g. "E4") to row/col coordinates
+        void notationToCoords(const std::string& notation, unsigned int& row, unsigned int& col) const;
 
     private:
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS> board;
@@ -40,9 +48,25 @@ class Board final {
             unsigned int fromRow, fromCol;
             unsigned int toRow, toCol;
         };
+        
 
-        bool _isValidTwoStepMove(const Square& from, Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool pawnHasMoved) const;
-        bool _isTwoStepMove(const Square& from, Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied) const;
+        // Two step move
+        bool _isValidTwoStepMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool pawnHasMoved) const;
+        bool _isTwoStepMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
+
+        // One step move
+        bool _isValidOneStepMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied) const;
+        bool _isOneStepMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
+
+        bool _isValidAttackMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied) const;
+        bool _isAttackRightMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
+        bool _isAttackLeftMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
+
+        bool _isEnPassantLeft(Color_T pawnColor, const MoveCoordsData& moveData) const;
+        bool _isEnPassantRight(Color_T pawnColor, const MoveCoordsData& moveData) const;
+        bool _isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool direction) const;
+
+        std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& getBoard();
 
         Piece_T _charToPieceType(char c);
         std::unique_ptr<Piece> _createPiece(char pieceChar, Color_T color, const Square& square);

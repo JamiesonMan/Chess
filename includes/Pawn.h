@@ -12,10 +12,14 @@ class Pawn final : public Piece {
         void setHasMoved(bool);
         bool getHasMoved() const;
 
+        void setEnPassantCaptureStatus(bool);
+        bool getEnPassantCaptureStatus() const;
+
         virtual bool isValidMove(const Square& otherSquare) const override;
+
         virtual std::string toString() const override;
 
     private:
-        
+        bool enPassantCaptureStatus; // Is set to true after moving 2 and then upon another move set back to false;
         bool hasMoved;
 };
