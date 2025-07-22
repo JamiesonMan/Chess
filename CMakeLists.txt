@@ -15,6 +15,7 @@ add_executable(Chess
     src/Pawn.cpp 
     src/Piece.cpp
     src/Square.cpp
+    src/Game.cpp
     Main.cpp
 )
 
@@ -24,6 +25,7 @@ add_executable(TwoStepPawnMove
     src/Pawn.cpp 
     src/Piece.cpp
     src/Square.cpp
+    src/Game.cpp
     tests/pawn_tests/two_step_pawn_moves/Main.cpp
 )
 enable_testing()

@@ -2,7 +2,6 @@
 #include "Square.h"
 #include "Piece.h"
 #include <array>
-#include <vector>
 #include <stdexcept>
 #include <cctype>
 #include <ostream>
@@ -26,6 +25,9 @@ class Board final {
 
         const Piece* getPieceAt(size_t row, size_t col) const;
 
+        bool getCheckToResetEnPassant() const;
+        void setCheckToResetEnPassant(bool val);
+
         void printBoard() const;
         std::string boardToString() const;
 
@@ -43,12 +45,13 @@ class Board final {
     private:
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS> board;
         std::array<std::array<std::unique_ptr<Piece>, MAX_COLS>, MAX_ROWS> pieces;
-        
+
         struct MoveCoordsData {
             unsigned int fromRow, fromCol;
             unsigned int toRow, toCol;
         };
-        
+
+        bool m_checkToResetEnPassant;
 
         // Two step move
         bool _isValidTwoStepMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool pawnHasMoved) const;

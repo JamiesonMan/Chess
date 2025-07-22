@@ -20,8 +20,11 @@ Board::Board()
             {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
         }}) {}
 
-Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping){
+Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping) 
+    : m_checkToResetEnPassant{false} 
+{
     board = std::array<std::array<Square, MAX_COLS>, MAX_ROWS>();
+
     // Initialize pieces array to nullptr
     for(size_t row = 0; row < MAX_ROWS; ++row) {
         for(size_t col = 0; col < MAX_COLS; ++col) {
@@ -67,6 +70,9 @@ const Square& Board::getBoardAt(size_t row, size_t col) const {
     }
 }
 
+bool Board::getCheckToResetEnPassant() const{ return m_checkToResetEnPassant; }
+void Board::setCheckToResetEnPassant(bool val) { m_checkToResetEnPassant = val; }
+
 const std::array<std::array<Square, Board::MAX_COLS>, Board::MAX_ROWS>& Board::getBoard() const{
     return board;
 }
@@ -89,7 +95,6 @@ void Board::moveTo(Square& from, Square& to) {
     size_t toRow = to.getRow();
     size_t toCol = to.getCol();
 
-
     // Get the piece to move
     std::unique_ptr<Piece>& movingPiece = pieces[fromRow][fromCol];
     if(!movingPiece) {
@@ -105,10 +110,10 @@ void Board::moveTo(Square& from, Square& to) {
     bool isEnPassant = false;
     if(movingPiece->getType() == Piece_T::PAWN) {
         // Check if this is a diagonal move to an empty square (potential en passant)
-        bool isDiagonalMove = (fromCol != toCol);
+        bool isAttackMove = (fromCol != toCol);
         bool destinationEmpty = !to.isOccupied();
         
-        if(isDiagonalMove && destinationEmpty) {
+        if(isAttackMove && destinationEmpty) {
             // Look for enemy pawn on the same row as moving pawn that can be captured via en passant
             const Piece* potentialTarget = getPieceAt(fromRow, toCol);
             if(potentialTarget && potentialTarget->getType() == Piece_T::PAWN) {
@@ -116,6 +121,11 @@ void Board::moveTo(Square& from, Square& to) {
                 if(targetPawn->getEnPassantCaptureStatus() && 
                    targetPawn->getColor() != movingPiece->getColor()) {
                     isEnPassant = true;
+                    
+                    if(!getCheckToResetEnPassant()) {
+                        throw std::invalid_argument("Invalid En Passant Move!");
+                    }
+
                     // Remove the en passant target piece
                     pieces[fromRow][toCol].reset();
                     getBoardAt(fromRow, toCol).setOccupied(false);
@@ -141,28 +151,47 @@ void Board::moveTo(Square& from, Square& to) {
     // Update square occupancy
     from.setOccupied(false);
     to.setOccupied(true);
+    
+    // After any move occurs, if we should reset en passant, we will.
+    if(getCheckToResetEnPassant()){
+        for(size_t row{0}; row < 8; ++row){
+            for(size_t col{0}; col < 8; ++col){
+                if(pieces[toRow][toCol]->getType() == Piece_T::PAWN){
+                    Pawn* pawn = dynamic_cast<Pawn*>(pieces[toRow][toCol].get());
+                    if(pawn->getEnPassantCaptureStatus()){
+                        pawn->setEnPassantCaptureStatus(false);
+                    }
+                }
+            }
+        }
+        setCheckToResetEnPassant(false);
+    }
 
-    // Handle pawn promotion
     if(pieces[toRow][toCol]->getType() == Piece_T::PAWN){
         Pawn* pawn = dynamic_cast<Pawn*>(pieces[toRow][toCol].get());
 
         if(pawn->getEnPassantCaptureStatus()){
             pawn->setEnPassantCaptureStatus(false);
         } else {
-            if(pawn->getColor() == Color_T::BLACK && toRow == 3 && pawn->getHasMoved() == false){
+            if(pawn->getColor() == Color_T::BLACK && toRow == 3 && pawn->getHasMoved() == false){ // If we just moved 2.
                 pawn->setEnPassantCaptureStatus(true);
+                setCheckToResetEnPassant(true);
+            } else if (pawn->getColor() == Color_T::WHITE && toRow == 4 && pawn->getHasMoved() == false){
+                pawn->setEnPassantCaptureStatus(true);
+                setCheckToResetEnPassant(true);
             }
         }
 
         pawn->setHasMoved(true);
 
+        // Handle pawn promotion
         if(pawnCanPromote(to, pieces[toRow][toCol]->getColor())){
             // For now, just promote to Queen
             // TODO: Add user choice for promotion piece
             pieces[toRow][toCol] = std::make_unique<Pawn>(Piece_T::QUEEN, pieces[toRow][toCol]->getColor(), to, *this);
         }
     }
-}
+}   
 
 // Move logic
 bool Board::validPawnMove(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved) const {
