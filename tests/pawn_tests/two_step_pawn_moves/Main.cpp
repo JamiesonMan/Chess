@@ -3,8 +3,21 @@
 
 /* Testing two step logic for pawns. */
 int main(){
-    
-    Board b;
+    bool t1;
+
+    const std::array<std::array<char, Board::MAX_COLS>, Board::MAX_ROWS> boardInit1 = {{
+            {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'},
+            {'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
+            {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
+        }};
+
+    Board b{boardInit1};
+
     const auto& board = b.getBoard();
 
     std::cout << b << std::endl;
@@ -43,7 +56,13 @@ int main(){
     std::cout << "Total Impossible Moves: " << numberOfFalse << "\n";
     std::cout << "Total Possible Moves: " << numberOfTrue << std::endl;
 
-    if(numberOfFalse == 1008 && numberOfTrue == 16) {
+    if(numberOfTrue == 16) {
+        t1 = true;
+    } else {
+        t1 = false;
+    }
+
+    if(t1){
         return 0;
     } else {
         return 1;

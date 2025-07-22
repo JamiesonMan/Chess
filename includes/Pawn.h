@@ -16,13 +16,6 @@ class Pawn final : public Piece {
         virtual std::string toString() const override;
 
     private:
-        struct MoveCoordsData {
-            unsigned int fromRow, fromCol;
-            unsigned int toRow, toCol;
-        };
         
         bool hasMoved;
-
-        bool _isValidTwoStepMove(const Square& thisSquare, Color_T thisColor, const Board& boardRef, const MoveCoordsData& data, bool otherSquareOccupied) const;
-        bool _isTwoStepMove(const Square& thisSquare, Color_T thisColor, const Board& boardRef, const MoveCoordsData& data, bool otherSquareOccupied) const;
 };

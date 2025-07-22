@@ -8,7 +8,19 @@
 #include "Pawn.h"
 
 
-Board::Board(){
+Board::Board() 
+    : Board({{
+            {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'},
+            {'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
+            {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
+        }}) {}
+
+Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping){
     board = std::array<std::array<Square, MAX_COLS>, MAX_ROWS>();
     // Initialize pieces array to nullptr
     for(size_t row = 0; row < MAX_ROWS; ++row) {
@@ -17,25 +29,12 @@ Board::Board(){
         }
     }
 
-
-    std::array<std::array<char, MAX_COLS>, MAX_ROWS> initBoardMapping = {{
-        {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'},
-        {'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'},
-        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-        {'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
-        {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
-    }};
-
-
     // Single loop for both squares and pieces
     for(size_t row = 0; row < MAX_ROWS; ++row) {
         for(size_t col = 0; col < MAX_COLS; ++col) {
             // Create square with alternating colors
             Color_T squareColor = ((row + col) % 2 == 0) ? Color_T::WHITE : Color_T::BLACK;
-            board[row][col] = Square{squareColor, static_cast<unsigned int>(row + 1), static_cast<unsigned int>(col + 1)};
+            board[row][col] = Square{squareColor, static_cast<unsigned int>(row), static_cast<unsigned int>(col)};
             
             // Get piece character from mapping
             char pieceChar = initBoardMapping[row][col];
@@ -49,6 +48,7 @@ Board::Board(){
         }
     }
 }
+
 
 Square& Board::getBoardAt(size_t row, size_t col) {
     
@@ -76,6 +76,79 @@ const Piece* Board::getPieceAt(size_t row, size_t col) const {
         return nullptr;
     }
     return pieces[row][col].get();
+}
+
+// Move logic
+bool Board::canPawnMoveTo(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved) const {
+
+    MoveCoordsData moveData{from.getRow(), from.getCol(), to.getRow(), to.getCol()};
+    
+    if(moveData.fromCol > 7 || moveData.toCol > 7 || moveData.fromCol < 0 || moveData.toCol < 0) {
+        std::cout << "Invalid column data: fromCol=" << moveData.fromCol << ", toCol=" << moveData.toCol << std::endl;
+        return false;
+    }
+
+    // Cannot move to the current position.
+    if(to == getBoardAt(moveData.fromRow, moveData.fromCol)){ return false; }
+
+    // Check if it's a two step move and if it's valid
+    if(_isTwoStepMove(from, pawnColor, moveData, to.isOccupied())){
+        return _isValidTwoStepMove(from, pawnColor, moveData, to.isOccupied(), hasMoved);
+    }
+
+    return false;
+}
+
+bool Board::_isValidTwoStepMove(const Square& from, Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool pawnHasMoved) const{  
+
+    if(pawnHasMoved) { // Start row for pawn black pawn
+        std::cout << "Pawn has already moved" << std::endl;
+        return false; 
+    } // Can only two step once.
+
+    switch(pawnColor){
+        case Color_T::BLACK: {
+            // Check bounds of to square and get middle square (0-7 indexing)
+            if(moveData.toRow > 7 || moveData.toCol != moveData.fromCol) return false;
+
+            const Piece* midPiece = getPieceAt(moveData.fromRow + 1, moveData.fromCol);
+            bool midSquareOccupied = (midPiece != nullptr);
+
+            
+            if(!toSquareOccupied && !midSquareOccupied){ // The two spaces are free to move in.
+                // Need to still implement a function to determine if it would put the king in check.
+                return true; 
+            }
+        
+            return false;
+        }
+        
+        case Color_T::WHITE: {
+            // Check bounds for to square and get middle square (0-7 indexing)
+            if(moveData.toRow > 4 || moveData.toCol != moveData.fromCol) { return false; }
+            const Piece* midPiece = getPieceAt(moveData.fromRow - 1, moveData.fromCol);
+            bool midSquareOccupied = (midPiece != nullptr);
+
+            
+            if(!toSquareOccupied && !midSquareOccupied){ // The two spaces are free to move in.
+                // *** Need to still implement a function to determine if it would put the kind in check. ***
+                return true; 
+            }
+            
+            return false;
+        }
+    }
+}
+
+// Confirm that we are moving 2 rows up or down (black or white) and we remain in same col.
+bool Board::_isTwoStepMove(const Square& from, Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied) const{
+    if(pawnColor == Color_T::BLACK) {
+        // Black pawns move down (increasing row)
+        return (moveData.toRow == (moveData.fromRow + 2)) && (moveData.toCol == moveData.fromCol);
+    } else {
+        // White pawns move up (decreasing row)
+        return (moveData.toRow == (moveData.fromRow - 2)) && (moveData.toCol == moveData.fromCol);
+    }
 }
 
 Piece_T Board::_charToPieceType(char c) {

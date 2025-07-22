@@ -2,11 +2,12 @@
 #include "Colors.h"
 #include <ostream>
 
+// Maps itself as row: [1-8] and col: [1-8]
 class Square final {
     friend std::ostream& operator<<(std::ostream& output, const Square& square);
 
     public:
-        Square(Color_T squareColor = Color_T::WHITE, unsigned int row = 1, unsigned int col = 1);
+        Square(Color_T squareColor = Color_T::WHITE, unsigned int row = 0, unsigned int col = 0);
 
         Color_T getSquareColor() const;
         unsigned int getRow() const;

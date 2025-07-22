@@ -6,24 +6,24 @@ Square::Square(Color_T squareColor, unsigned int squareRow, unsigned int squareC
     : color{squareColor}, row{squareRow}, col{squareCol}, occupied{false} {
         
         // Validate row and col
-        if(row > 8){
-            throw std::invalid_argument("Error: Row cannot be greater than 8.");
-        } else if (col > 8) {
-            throw std::invalid_argument("Error: Col cannot be greater than 8.");
-        } else if (row < 1) {
-            throw std::invalid_argument("Error: Row cannot be less than 1.");
-        } else if (col < 1) {
-            throw std::invalid_argument("Error: Col cannot be less than 1.");
+        if(row > 7){
+            throw std::invalid_argument("Error: Row cannot be greater than 7.");
+        } else if (col > 7) {
+            throw std::invalid_argument("Error: Col cannot be greater than 7.");
+        } else if (row < 0) {
+            throw std::invalid_argument("Error: Row cannot be less than 0.");
+        } else if (col < 0) {
+            throw std::invalid_argument("Error: Col cannot be less than 0.");
         }
     }
 
 unsigned int Square::rowToRank(unsigned int row){
-    unsigned int arr[9] = { 0, 8, 7, 6, 5, 4, 3, 2, 1 }; // Map the row to correct rank.
+    unsigned int arr[8] = { 8, 7, 6, 5, 4, 3, 2, 1 }; // Map the row to correct rank.
 
-    if(row < 1) {
-        throw std::invalid_argument("Error: Row can't be < 1.");
-    } else if (row > 8) {
-        throw std::invalid_argument("Error: Row can't be > 8.");
+    if(row <= 1) {
+        throw std::invalid_argument("Error: Row can't be <= 1.");
+    } else if (row >= 8) {
+        throw std::invalid_argument("Error: Row can't be >= 8.");
     }
 
     return arr[row];
@@ -32,24 +32,24 @@ unsigned int Square::rowToRank(unsigned int row){
 char Square::colToFile(unsigned int col) {
 
     switch(col){
-        case 1:
+        case 0:
             return 'A';
-        case 2:
+        case 1:
             return 'B';
-        case 3:
+        case 2:
             return 'C';
-        case 4:
+        case 3:
             return 'D';
-        case 5:
+        case 4:
             return 'E';
-        case 6:
+        case 5:
             return 'F';
-        case 7:
+        case 6:
             return 'G';
-        case 8:
+        case 7:
             return 'H';
         default:
-            throw std::invalid_argument("Error: col must be between 1 and 8 inclusive.");
+            throw std::invalid_argument("Error: col must be between 0 and 7 inclusive.");
     }
 }
 
