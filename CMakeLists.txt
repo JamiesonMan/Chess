@@ -18,14 +18,13 @@ add_executable(Chess
     Main.cpp
 )
 
-add_executable(PawnTests
+add_executable(TwoStepPawnMove
     src/Board.cpp 
     src/Colors.cpp 
     src/Pawn.cpp 
     src/Piece.cpp
     src/Square.cpp
-    tests/pawn_tests/Main.cpp
+    tests/pawn_tests/two_step_pawn_moves/Main.cpp
 )
-
 enable_testing()
-add_test(NAME TestPawn COMMAND PawnTests)
+add_test(NAME TestPawn COMMAND TwoStepPawnMove)

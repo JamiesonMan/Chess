@@ -1,6 +1,7 @@
 #include <iostream>
 #include "Board.h"
 
+/* Testing two step logic for pawns. */
 int main(){
     
     Board b;
@@ -23,7 +24,7 @@ int main(){
                     // Loop through entire board.
                     for(size_t rowI = 0; rowI < Board::MAX_ROWS; rowI++){
                         for(size_t colI = 0; colI < Board::MAX_COLS; colI++){
-                            const Square& toSquare = (*board)[rowI][colI];
+                            const Square& toSquare = board[rowI][colI];
                             
                             bool validMove = p->isValidMove(toSquare); // Determine if this pawn has a valid move.
 

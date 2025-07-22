@@ -9,7 +9,7 @@
 
 
 Board::Board(){
-    board = std::make_unique<std::array<std::array<Square, MAX_COLS>, MAX_ROWS>>();
+    board = std::array<std::array<Square, MAX_COLS>, MAX_ROWS>();
     // Initialize pieces array to nullptr
     for(size_t row = 0; row < MAX_ROWS; ++row) {
         for(size_t col = 0; col < MAX_COLS; ++col) {
@@ -35,7 +35,7 @@ Board::Board(){
         for(size_t col = 0; col < MAX_COLS; ++col) {
             // Create square with alternating colors
             Color_T squareColor = ((row + col) % 2 == 0) ? Color_T::WHITE : Color_T::BLACK;
-            (*board)[row][col] = Square{squareColor, static_cast<unsigned int>(row + 1), static_cast<unsigned int>(col + 1)};
+            board[row][col] = Square{squareColor, static_cast<unsigned int>(row + 1), static_cast<unsigned int>(col + 1)};
             
             // Get piece character from mapping
             char pieceChar = initBoardMapping[row][col];
@@ -43,14 +43,31 @@ Board::Board(){
             // Create piece if square is not empty
             if(pieceChar != ' ') {
                 Color_T pieceColor = std::isupper(pieceChar) ? Color_T::WHITE : Color_T::BLACK;
-                pieces[row][col] = _createPiece(pieceChar, pieceColor, (*board)[row][col]);
-                (*board)[row][col].setOccupied(true);
+                pieces[row][col] = _createPiece(pieceChar, pieceColor, board[row][col]);
+                getBoardAt(row, col).setOccupied(true);
             }
         }
     }
 }
 
-const std::unique_ptr<std::array<std::array<Square, Board::MAX_COLS>, Board::MAX_ROWS>>& Board::getBoard(){
+Square& Board::getBoardAt(size_t row, size_t col) {
+    
+    if(row >= MAX_ROWS || col >= MAX_COLS){
+        throw std::invalid_argument("Error: Attempted to get a square off the board.");
+    } else {
+        return board[row][col];
+    }
+}
+
+const Square& Board::getBoardAt(size_t row, size_t col) const {
+    if(row >= MAX_ROWS || col >= MAX_COLS){
+        throw std::invalid_argument("Error: Attempted to get a square off the board.");
+    } else {
+        return board[row][col];
+    }
+}
+
+const std::array<std::array<Square, Board::MAX_COLS>, Board::MAX_ROWS>& Board::getBoard(){
     return board;
 }
 

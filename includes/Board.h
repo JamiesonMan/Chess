@@ -20,13 +20,18 @@ class Board final {
         static const size_t MAX_COLS{8};
         static const size_t MIN_COLS{1};
 
-        const std::unique_ptr<std::array<std::array<Square, MAX_COLS>, MAX_ROWS>>& getBoard();
+        const std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& getBoard();
+
+        Square& getBoardAt(size_t row, size_t col);
+        const Square& getBoardAt(size_t row, size_t col) const;
+
         const Piece* getPieceAt(size_t row, size_t col) const;
+
         void printBoard() const;
         std::string boardToString() const;
 
     private:
-        std::unique_ptr<std::array<std::array<Square, MAX_COLS>, MAX_ROWS>> board;
+        std::array<std::array<Square, MAX_COLS>, MAX_ROWS> board;
         std::array<std::array<std::unique_ptr<Piece>, MAX_COLS>, MAX_ROWS> pieces;
         
         Piece_T _charToPieceType(char c);
