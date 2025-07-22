@@ -34,10 +34,10 @@ void Game::_loop(std::string square1, std::string square2, unsigned int fromRow,
                 std::cout << "Select A Square to Move:\n";
                 std::cout << "\tSquare from: ";
                 std::getline(std::cin, square1);
+                this->board.notationToCoords(square1, fromRow, fromCol);
                 std::cout << "\n\t Square to: ";
                 std::getline(std::cin, square2);
                 std::cout << std::endl;
-                this->board.notationToCoords(square1, fromRow, fromCol);
                 this->board.notationToCoords(square2, toRow, toCol);
             } catch(const std::exception& e){
                 error << e.what() << "\n" << std::endl;

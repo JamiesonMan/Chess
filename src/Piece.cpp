@@ -19,6 +19,25 @@ void Piece::setColor(Color_T){
     this->color = color;
 }
 
+std::string Piece::typeToString(Piece_T type) {
+    switch(type) {
+        case Piece_T::PAWN:
+            return "Pawn";
+        case Piece_T::BISHOP:
+            return "Bishop";
+        case Piece_T::KNIGHT:
+            return "Knight";
+        case Piece_T::ROOK:
+            return "Rook";
+        case Piece_T::QUEEN:
+            return "Queen";
+        case Piece_T::KING:
+            return "King";
+        default:
+            return "";
+    }
+}
+
 const Board& Piece::getBoard() const {
     return boardRef;
 }

@@ -20,6 +20,8 @@ class Piece {
         Color_T getColor() const;
         void setColor(Color_T);
 
+        static std::string typeToString(Piece_T type);
+    
         const Board& getBoard() const;
 
         const Square& getSquarePosition() const;

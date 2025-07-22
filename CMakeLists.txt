@@ -13,6 +13,7 @@ add_executable(Chess
     src/Board.cpp 
     src/Colors.cpp 
     src/Pawn.cpp 
+    src/Bishop.cpp
     src/Piece.cpp
     src/Square.cpp
     src/Game.cpp
@@ -24,6 +25,7 @@ add_executable(TwoStepPawnMove
     src/Colors.cpp 
     src/Pawn.cpp 
     src/Piece.cpp
+    src/Bishop.cpp
     src/Square.cpp
     src/Game.cpp
     tests/pawn_tests/two_step_pawn_moves/Main.cpp

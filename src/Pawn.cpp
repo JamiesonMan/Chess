@@ -27,8 +27,8 @@ bool Pawn::isValidMove(const Square& toSquare) const {
 
 std::string Pawn::toString() const {
     std::ostringstream output;
-    output << "Piece: Pawn\n";
-    output << "Color: " << colorToString(this->getColor());
+    output << "Piece: " << Piece::typeToString(getType());
+    output << "\nColor: " << colorToString(this->getColor());
     output << "\nCurrent Square: " << this->getSquarePosition(); // Overloaded.
     output << "\nHas Moved: " << std::boolalpha << this->getHasMoved();
 

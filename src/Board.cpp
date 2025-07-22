@@ -4,8 +4,10 @@
 #include <string>
 #include <sstream>
 #include <cctype>
+#include <cmath>
 
 #include "Pawn.h"
+#include "Bishop.h"
 
 
 Board::Board() 
@@ -198,13 +200,7 @@ bool Board::validPawnMove(const Square& from, const Square& to, Color_T pawnColo
 
     MoveCoordsData moveData{from.getRow(), from.getCol(), to.getRow(), to.getCol()};
     
-    if(moveData.fromCol > 7 || moveData.toCol > 7) {
-        std::cout << "Invalid column data: fromCol=" << moveData.fromCol << ", toCol=" << moveData.toCol << std::endl;
-        return false;
-    }
-
-    // Cannot move to the current position.
-    if(to == getBoardAt(moveData.fromRow, moveData.fromCol)){ return false; }
+    if(!_prelimMoveCheck(moveData)){ return false; }
 
     if(_isTwoStepMove(pawnColor, moveData)){
         return _isValidTwoStepMove(pawnColor, moveData, to.isOccupied(), hasMoved);
@@ -233,6 +229,62 @@ bool Board::validPawnMove(const Square& from, const Square& to, Color_T pawnColo
     }
     return false;
 }
+
+bool Board::validBishopMove(const Square& from, const Square& to, Color_T bishopColor) const {
+    MoveCoordsData moveData{from.getRow(), from.getCol(), to.getRow(), to.getCol()};
+
+    if (!_prelimMoveCheck(moveData)) { return false; } // Check bounds and if moving to same spot.
+
+    int deltaRow = static_cast<int>(moveData.toRow) - static_cast<int>(moveData.fromRow);
+    int deltaCol = static_cast<int>(moveData.toCol) - static_cast<int>(moveData.fromCol);
+
+    if(abs(deltaRow) != abs(deltaCol)){ return false; } // Not on diagonal
+
+    const Piece* p = getPieceAt(moveData.toRow, moveData.toCol);
+    if(p){
+        if(p->getColor() == bishopColor){ return false; } // Cant take a friendly piece.
+    }
+
+    if(_checkScopeBlocked(moveData, deltaRow, deltaCol)){ return false; } // Something was in between.
+     
+    return true;
+}
+
+bool Board::_checkScopeBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const {
+    // Determine direction
+    int rowStep = (deltaRow > 0) ? 1 : -1;
+    int colStep = (deltaCol > 0) ? 1 : -1;
+    
+    // Use signed integers to avoid underflow
+    int row = static_cast<int>(moveData.fromRow) + rowStep;
+    int col = static_cast<int>(moveData.fromCol) + colStep;
+    int toRow = static_cast<int>(moveData.toRow);
+    int toCol = static_cast<int>(moveData.toCol);
+    
+    // Check path until we reach destination (exclusive)
+    while (row != toRow && col != toCol) {
+        const Piece* p = getPieceAt(static_cast<size_t>(row), static_cast<size_t>(col));
+        if (p) {
+            return true; // Path is blocked
+        }
+        row += rowStep;
+        col += colStep;
+    }
+    
+    return false; // Path is clear
+}
+
+bool Board::_prelimMoveCheck(const MoveCoordsData& moveData) const {
+    if(moveData.fromCol > 7 || moveData.fromRow > 7 || moveData.toRow > 7 || moveData.toCol > 7) {
+        return false;
+    }
+
+    // Cannot move to the current position.
+    if(moveData.fromCol == moveData.toCol && moveData.fromRow == moveData.toRow){ return false; }
+
+    return true;
+}
+
 
 bool Board::pawnCanPromote(const Square& to, Color_T color) const {
     switch(color){
@@ -470,7 +522,8 @@ std::unique_ptr<Piece> Board::_createPiece(char pieceChar, Color_T color, const 
     switch(type) {
         case Piece_T::ROOK:   
         case Piece_T::KNIGHT: 
-        case Piece_T::BISHOP: 
+        case Piece_T::BISHOP:
+            return std::make_unique<Bishop>(type, color, square, *this);
         case Piece_T::QUEEN:  
         case Piece_T::KING:   
         case Piece_T::PAWN:

@@ -33,6 +33,7 @@ class Board final {
 
         // Move member function
         bool validPawnMove(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved) const;
+        bool validBishopMove(const Square& from, const Square& to, Color_T bishopColor) const;
 
         bool pawnCanPromote(const Square& to, Color_T color) const;
 
@@ -53,6 +54,8 @@ class Board final {
 
         bool m_checkToResetEnPassant;
 
+        bool _prelimMoveCheck(const MoveCoordsData&) const;
+
         // Two step move
         bool _isValidTwoStepMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool pawnHasMoved) const;
         bool _isTwoStepMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
@@ -68,6 +71,10 @@ class Board final {
         bool _isEnPassantLeft(Color_T pawnColor, const MoveCoordsData& moveData) const;
         bool _isEnPassantRight(Color_T pawnColor, const MoveCoordsData& moveData) const;
         bool _isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool direction) const;
+
+        // Bishop
+
+        bool _checkScopeBlocked(const MoveCoordsData&, int deltaRow, int deltaCol) const;
 
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& getBoard();
 
