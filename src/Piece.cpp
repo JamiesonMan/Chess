@@ -1,5 +1,7 @@
 #include "Piece.h"
 #include <stdexcept>
+#include <sstream>
+
 
 Piece::Piece(Piece_T pieceType, Color_T pieceColor, const Square& pieceSquareRef, const Board& pieceBoardRef)
     : type{pieceType}, color{pieceColor}, positionRef{&pieceSquareRef}, boardRef{pieceBoardRef} {
@@ -52,4 +54,13 @@ void Piece::setSquarePosition(const Square& newPosition) {
 
 unsigned int Piece::getValue() const {
     return static_cast<unsigned int>(type);
+}
+
+std::string Piece::toString() const {
+    std::ostringstream output;
+    output << "Piece: " << Piece::typeToString(getType());
+    output << "\nColor: " << colorToString(this->getColor());
+    output << "\nCurrent Square: " << this->getSquarePosition(); // Overloaded.
+
+    return output.str();
 }

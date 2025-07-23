@@ -34,6 +34,7 @@ class Board final {
         // Move member function
         bool validPawnMove(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved) const;
         bool validBishopMove(const Square& from, const Square& to, Color_T bishopColor) const;
+        bool validKnightMove(const Square& from, const Square& to, Color_T knightColor) const;
 
         bool pawnCanPromote(const Square& to, Color_T color) const;
 

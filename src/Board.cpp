@@ -8,6 +8,7 @@
 
 #include "Pawn.h"
 #include "Bishop.h"
+#include "Knight.h"
 
 
 Board::Board() 
@@ -250,12 +251,42 @@ bool Board::validBishopMove(const Square& from, const Square& to, Color_T bishop
     return true;
 }
 
+bool Board::validKnightMove(const Square& from, const Square& to, Color_T knightColor) const {
+    MoveCoordsData moveData{from.getRow(), from.getCol(), to.getRow(), to.getCol()};
+
+    if (!_prelimMoveCheck(moveData)) { return false; } // Check bounds and if moving to same spot.
+
+    switch(from.getSquareColor()){
+        case Color_T::BLACK:
+            if(to.getSquareColor() != Color_T::WHITE) { return false; }
+            break;
+        case Color_T::WHITE:
+            if(to.getSquareColor() != Color_T::BLACK) { return false; }
+            break;
+    }
+
+    int deltaRow = static_cast<int>(moveData.toRow) - static_cast<int>(moveData.fromRow);
+    int deltaCol = static_cast<int>(moveData.toCol) - static_cast<int>(moveData.fromCol); 
+
+    if((abs(deltaCol) == 2 && abs(deltaRow) == 1)
+    || (abs(deltaCol) == 1 && abs(deltaRow) == 2)){
+        const Piece* p = getPieceAt(moveData.toRow, moveData.toCol);
+
+        if(p){
+            if(p->getColor() == knightColor){ return false; } // Cant take a friendly piece.
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
 bool Board::_checkScopeBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const {
     // Determine direction
     int rowStep = (deltaRow > 0) ? 1 : -1;
     int colStep = (deltaCol > 0) ? 1 : -1;
     
-    // Use signed integers to avoid underflow
     int row = static_cast<int>(moveData.fromRow) + rowStep;
     int col = static_cast<int>(moveData.fromCol) + colStep;
     int toRow = static_cast<int>(moveData.toRow);
@@ -522,6 +553,7 @@ std::unique_ptr<Piece> Board::_createPiece(char pieceChar, Color_T color, const 
     switch(type) {
         case Piece_T::ROOK:   
         case Piece_T::KNIGHT: 
+            return std::make_unique<Knight>(type, color, square, *this);
         case Piece_T::BISHOP:
             return std::make_unique<Bishop>(type, color, square, *this);
         case Piece_T::QUEEN:  
@@ -542,8 +574,6 @@ std::unique_ptr<Piece> Board::_createPiece(char pieceChar, Color_T color, const 
         default: throw std::invalid_argument("Invalid piece type");
     }
 }
-
-
 
 void Board::printBoard() const {
     std::cout << this->boardToString();

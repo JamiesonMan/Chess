@@ -30,7 +30,7 @@ class Piece {
         unsigned int getValue() const; // return enum class value for the piece type.
 
         virtual bool isValidMove(const Square& toSquare) const = 0; // pure virtual. Based on derived class implementation.
-        virtual std::string toString() const = 0; // Interpret the Piece_T in their own implementation.
+        virtual std::string toString() const; // Interpret the Piece_T in their own implementation.
 
     private:
         Piece_T type;
