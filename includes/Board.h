@@ -35,6 +35,7 @@ class Board final {
         bool validPawnMove(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved) const;
         bool validBishopMove(const Square& from, const Square& to, Color_T bishopColor) const;
         bool validKnightMove(const Square& from, const Square& to, Color_T knightColor) const;
+        bool validRookMove(const Square& from, const Square& to, Color_T rookColor) const;
 
         bool pawnCanPromote(const Square& to, Color_T color) const;
 
@@ -69,13 +70,11 @@ class Board final {
         bool _isAttackRightMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
         bool _isAttackLeftMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
 
-        bool _isEnPassantLeft(Color_T pawnColor, const MoveCoordsData& moveData) const;
-        bool _isEnPassantRight(Color_T pawnColor, const MoveCoordsData& moveData) const;
         bool _isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool direction) const;
 
         // Bishop
 
-        bool _checkScopeBlocked(const MoveCoordsData&, int deltaRow, int deltaCol) const;
+        bool _checkDiagBlocked(const MoveCoordsData&, int deltaRow, int deltaCol) const;
 
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& getBoard();
 

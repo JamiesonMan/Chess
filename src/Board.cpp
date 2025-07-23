@@ -246,7 +246,7 @@ bool Board::validBishopMove(const Square& from, const Square& to, Color_T bishop
         if(p->getColor() == bishopColor){ return false; } // Cant take a friendly piece.
     }
 
-    if(_checkScopeBlocked(moveData, deltaRow, deltaCol)){ return false; } // Something was in between.
+    if(_checkDiagBlocked(moveData, deltaRow, deltaCol)){ return false; } // Something was in between.
      
     return true;
 }
@@ -282,7 +282,11 @@ bool Board::validKnightMove(const Square& from, const Square& to, Color_T knight
     return false;
 }
 
-bool Board::_checkScopeBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const {
+bool Board::validRookMove(const Square& from, const Square& to, Color_T rookColor) const {
+    
+}
+
+bool Board::_checkDiagBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const {
     // Determine direction
     int rowStep = (deltaRow > 0) ? 1 : -1;
     int colStep = (deltaCol > 0) ? 1 : -1;
