@@ -77,6 +77,8 @@ class Board final {
         bool _checkDiagBlocked(const MoveCoordsData&, int deltaRow, int deltaCol) const;
         bool _checkRankFileBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const;
 
+        Piece_T _promptForPromotion(Color_T pawnColor) const;
+
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& getBoard();
 
         Piece_T _charToPieceType(char c);

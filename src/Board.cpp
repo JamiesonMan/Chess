@@ -5,6 +5,7 @@
 #include <sstream>
 #include <cctype>
 #include <cmath>
+#include <limits>
 
 #include "Pawn.h"
 #include "Bishop.h"
@@ -192,15 +193,75 @@ void Board::moveTo(Square& from, Square& to) {
 
         // Handle pawn promotion
         if(pawnCanPromote(to, pieces[toRow][toCol]->getColor())){
-            
+
             Color_T pawnColor = pieces[toRow][toCol]->getColor();
+
+            Piece_T promotionValue = _promptForPromotion(pawnColor);
+
             pieces[toRow][toCol].reset(); // Free the pawn
             to.setOccupied(false); // Reset square occupied status
-            pieces[toRow][toCol] = std::make_unique<Queen>(Piece_T::QUEEN, pawnColor, to, *this);
+
+            switch(promotionValue){
+                case Piece_T::QUEEN:
+                    pieces[toRow][toCol] = std::make_unique<Queen>(Piece_T::QUEEN, pawnColor, to, *this);
+                    break;
+                case Piece_T::ROOK:
+                    pieces[toRow][toCol] = std::make_unique<Rook>(Piece_T::ROOK, pawnColor, to, *this);
+                    break;
+                case Piece_T::BISHOP:
+                    pieces[toRow][toCol] = std::make_unique<Bishop>(Piece_T::BISHOP, pawnColor, to, *this);
+                    break;
+                case Piece_T::KNIGHT:
+                    pieces[toRow][toCol] = std::make_unique<Knight>(Piece_T::KNIGHT, pawnColor, to, *this);
+                    break;
+                default:
+                    pieces[toRow][toCol] = std::make_unique<Queen>(Piece_T::QUEEN, pawnColor, to, *this);
+            }
+            
             to.setOccupied(true); // Set it back to occupied
         }
     }
 }   
+
+Piece_T Board::_promptForPromotion(Color_T pawnColor) const {
+    std::ostringstream error{};
+    unsigned int option{0};
+    while(true){
+        std::system("clear");
+        std::cout << error.str() << std::endl;
+        error.str(""); // reset error log.
+        do {
+            std::cout << "Select a piece type to promote to: \n\n";
+            std::cout << "\t1. Queen\n";
+            std::cout << "\t2. Rook\n";
+            std::cout << "\t3. Bishop\n";
+            std::cout << "\t4. Knight\n";
+
+            try {
+                std::cin >> option;
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear input buffer
+                if(option > 4){error << "Option must be less than 4." << std::endl;}
+            } catch (const std::exception& e){
+                error << e.what() << "\n" << std::endl;
+            }
+            
+        } while (option > 4);
+        break;
+    }
+
+    switch(option){
+        case 1:
+            return Piece_T::QUEEN;
+        case 2:
+            return Piece_T::ROOK;
+        case 3:
+            return Piece_T::BISHOP;
+        case 4:
+            return Piece_T::KNIGHT;
+        default:
+            return Piece_T::QUEEN;
+    }
+}
 
 // Move logic
 bool Board::validPawnMove(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved) const {
