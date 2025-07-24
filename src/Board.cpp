@@ -9,6 +9,9 @@
 #include "Pawn.h"
 #include "Bishop.h"
 #include "Knight.h"
+#include "Rook.h"
+#include "Queen.h"
+#include "King.h"
 
 
 Board::Board() 
@@ -189,9 +192,12 @@ void Board::moveTo(Square& from, Square& to) {
 
         // Handle pawn promotion
         if(pawnCanPromote(to, pieces[toRow][toCol]->getColor())){
-            // For now, just promote to Queen
-            // TODO: Add user choice for promotion piece
-            pieces[toRow][toCol] = std::make_unique<Pawn>(Piece_T::QUEEN, pieces[toRow][toCol]->getColor(), to, *this);
+            
+            Color_T pawnColor = pieces[toRow][toCol]->getColor();
+            pieces[toRow][toCol].reset(); // Free the pawn
+            to.setOccupied(false); // Reset square occupied status
+            pieces[toRow][toCol] = std::make_unique<Queen>(Piece_T::QUEEN, pawnColor, to, *this);
+            to.setOccupied(true); // Set it back to occupied
         }
     }
 }   
@@ -283,7 +289,113 @@ bool Board::validKnightMove(const Square& from, const Square& to, Color_T knight
 }
 
 bool Board::validRookMove(const Square& from, const Square& to, Color_T rookColor) const {
+    MoveCoordsData moveData{from.getRow(), from.getCol(), to.getRow(), to.getCol()};
+
+    if (!_prelimMoveCheck(moveData)) { return false; } // Check bounds and if moving to same spot.
+
+    int deltaRow = static_cast<int>(moveData.toRow) - static_cast<int>(moveData.fromRow);
+    int deltaCol = static_cast<int>(moveData.toCol) - static_cast<int>(moveData.fromCol);
+
+    if(!((moveData.fromCol == moveData.toCol) || (moveData.fromRow == moveData.toRow))){ return false; } // Not on rank or file
+
+    const Piece* p = getPieceAt(moveData.toRow, moveData.toCol);
+    if(p){
+        if(p->getColor() == rookColor){ return false; } // Cant take a friendly piece.
+    }
+
+    if(_checkRankFileBlocked(moveData, deltaRow, deltaCol)){ return false; } // Something was in between.
+     
+    return true;
+}
+
+bool Board::validQueenMove(const Square& from, const Square& to, Color_T queenColor) const {
+    MoveCoordsData moveData{from.getRow(), from.getCol(), to.getRow(), to.getCol()};
+
+    if (!_prelimMoveCheck(moveData)) { return false; } // Check bounds and if moving to same spot.
+
+    int deltaRow = static_cast<int>(moveData.toRow) - static_cast<int>(moveData.fromRow);
+    int deltaCol = static_cast<int>(moveData.toCol) - static_cast<int>(moveData.fromCol);
+
+    if(!((moveData.fromCol == moveData.toCol) 
+        || (moveData.fromRow == moveData.toRow)
+        || (abs(deltaRow) == abs(deltaCol))))
+        { return false; } // Not on rank or file
+
+    const Piece* p = getPieceAt(moveData.toRow, moveData.toCol);
+    if(p){
+        if(p->getColor() == queenColor){ return false; } // Cant take a friendly piece.
+    }
+
+    if(_checkRankFileBlocked(moveData, deltaRow, deltaCol) && _checkDiagBlocked(moveData, deltaRow, deltaCol)){ return false; } // Something was in between.
+     
+    return true;
+}
+
+bool Board::validKingMove(const Square& from, const Square& to, Color_T kingColor) const {
+    MoveCoordsData moveData{from.getRow(), from.getCol(), to.getRow(), to.getCol()};
+
+    if (!_prelimMoveCheck(moveData)) { return false; } // Check bounds and if moving to same spot.
+
+    int deltaRow = static_cast<int>(moveData.toRow) - static_cast<int>(moveData.fromRow);
+    int deltaCol = static_cast<int>(moveData.toCol) - static_cast<int>(moveData.fromCol);
+
+    if(!(abs(deltaRow) <= 1 && abs(deltaCol) <= 1)) { // King can only move 1 square in any direction
+        return false; 
+    } 
+
+    const Piece* p = getPieceAt(moveData.toRow, moveData.toCol);
+    if(p){
+        if(p->getColor() == kingColor){ return false; } // Cant take a friendly piece.
+    }
+     
+    return true;
+}
+
+bool Board::_checkRankFileBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const {
+    int rankDir{0};
+    int fileDir{0};
+
+    if(deltaRow == 0){
+        if(deltaCol > 0){
+            ++fileDir; // Right
+        } else {
+            --fileDir; // Left
+        }
+    } else {
+        if(deltaRow > 0){
+            ++rankDir; // Down
+        } else {
+            --rankDir; // Up
+        }
+    }
     
+    int row = static_cast<int>(moveData.fromRow) + rankDir;
+    int col = static_cast<int>(moveData.fromCol) + fileDir;
+    int toRow = static_cast<int>(moveData.toRow);
+    int toCol = static_cast<int>(moveData.toCol);
+    
+    // Check path until we reach destination (exclusive)
+    if(deltaRow == 0){
+        while (col != toCol) {
+            const Piece* p = getPieceAt(static_cast<size_t>(row), static_cast<size_t>(col));
+            if (p) {
+                return true; // Path is blocked
+            }
+            col += fileDir;
+        }
+    } else {
+        while (row != toRow) {
+            const Piece* p = getPieceAt(static_cast<size_t>(row), static_cast<size_t>(col));
+            if (p) {
+                return true; // Path is blocked
+            }
+            row += rankDir;
+        }
+    }
+
+    
+    
+    return false; // Path is clear
 }
 
 bool Board::_checkDiagBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const {
@@ -324,13 +436,15 @@ bool Board::_prelimMoveCheck(const MoveCoordsData& moveData) const {
 bool Board::pawnCanPromote(const Square& to, Color_T color) const {
     switch(color){
         case Color_T::BLACK:
-            if(to.getRow() != 7){
+            if(to.getRow() != (MAX_ROWS - 1)){
                 return false;
             }
+            break;
         case Color_T::WHITE:
             if(to.getRow() != 0){
                 return false;
             }
+            break;
     }
 
     return true;
@@ -556,12 +670,15 @@ std::unique_ptr<Piece> Board::_createPiece(char pieceChar, Color_T color, const 
     unsigned int row = square.getRow();
     switch(type) {
         case Piece_T::ROOK:   
+            return std::make_unique<Rook>(type, color, square, *this);
         case Piece_T::KNIGHT: 
             return std::make_unique<Knight>(type, color, square, *this);
         case Piece_T::BISHOP:
             return std::make_unique<Bishop>(type, color, square, *this);
-        case Piece_T::QUEEN:  
+        case Piece_T::QUEEN: 
+            return std::make_unique<Queen>(type, color, square, *this); 
         case Piece_T::KING:   
+            return std::make_unique<King>(type, color, square, *this); 
         case Piece_T::PAWN:
             if(color == Color_T::BLACK && row != 1){
                 std::unique_ptr<Pawn> p = std::make_unique<Pawn>(type, color, square, *this);
@@ -586,10 +703,11 @@ void Board::printBoard() const {
 std::string Board::boardToString() const {
     std::ostringstream output;
 
-    output << "  -----------------\n";
+    output << "  +---+---+---+---+---+---+---+---+\n";
+    
     // Traverse board.
     for(size_t row = 0; row < MAX_ROWS; ++row) {
-        output << (8 - row) << "|" << " ";
+        output << (MAX_ROWS - row) << " ";
         for(size_t col = 0; col < MAX_COLS; ++col) {
             char pieceChar = ' ';
             
@@ -614,12 +732,12 @@ std::string Board::boardToString() const {
                 }
             }
             
-            output << pieceChar << " ";
+            output << "| " << pieceChar << " ";
         }
-        output << "|" << "\n";
+        output << "|\n";
+        output << "  +---+---+---+---+---+---+---+---+\n";
     }
-    output << "  -----------------\n";
-    output << "   a b c d e f g h\n";
+    output << "    a   b   c   d   e   f   g   h\n";
 
     return output.str();
 }

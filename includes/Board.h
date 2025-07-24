@@ -36,6 +36,8 @@ class Board final {
         bool validBishopMove(const Square& from, const Square& to, Color_T bishopColor) const;
         bool validKnightMove(const Square& from, const Square& to, Color_T knightColor) const;
         bool validRookMove(const Square& from, const Square& to, Color_T rookColor) const;
+        bool validQueenMove(const Square& from, const Square& to, Color_T queenColor) const;
+        bool validKingMove(const Square& from, const Square& to, Color_T kingColor) const;
 
         bool pawnCanPromote(const Square& to, Color_T color) const;
 
@@ -72,9 +74,8 @@ class Board final {
 
         bool _isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool direction) const;
 
-        // Bishop
-
         bool _checkDiagBlocked(const MoveCoordsData&, int deltaRow, int deltaCol) const;
+        bool _checkRankFileBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const;
 
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& getBoard();
 

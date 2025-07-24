@@ -1,68 +1,25 @@
 #include <iostream>
-#include "Board.h"
+#include "../../TestManager.h"
 
-/* Testing two step logic for pawns. */
 int main(){
-    bool t1;
+    // Test case: White pawn initial two-step move
+    const std::array<std::array<char, TestManager::MAX_COLS>, TestManager::MAX_ROWS> boardInit = {{
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+        {' ', ' ', ' ', 'P', ' ', ' ', ' ', ' '},  // White pawn at initial position
+        {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '}
+    }};
 
-    const std::array<std::array<char, Board::MAX_COLS>, Board::MAX_ROWS> boardInit1 = {{
-            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-            {' ', ' ', ' ', 'p', ' ', ' ', ' ', ' '},
-            {' ', ' ', ' ', 'P', 'P', ' ', ' ', ' '},
-            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '}
-        }};
-
-    Board b{boardInit1};
-
-    std::cout << b << std::endl;
-   
-    int numberOfTrue = 0;
-    int numberOfFalse = 0;
-    // Loop through every position of board (64)
-    for(size_t row = 0; row < Board::MAX_ROWS; row++){
-        for(size_t col = 0; col < Board::MAX_COLS; col++){
-
-            // Get a pointer to current piece. nullptr if no piece at this location.
-            const Piece* p = b.getPieceAt(row, col);
-            if(p){ // If there is a piece.
-                if(p->getType() == Piece_T::PAWN){ // If it's of type PAWN.
-                    const Square& fromSquare = p->getSquarePosition();
-                    
-                    // Loop through entire board.
-                    for(size_t rowI = 0; rowI < Board::MAX_ROWS; rowI++){
-                        for(size_t colI = 0; colI < Board::MAX_COLS; colI++){
-                            const Square& toSquare = b.getBoardAt(rowI, colI);
-                            
-                            bool validMove = p->isValidMove(toSquare); // Determine if this pawn has a valid move.
-
-                            if(validMove){
-                                numberOfTrue++;
-                            } else {
-                                numberOfFalse++;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    std::cout << "Total Impossible Moves: " << numberOfFalse << "\n";
-    std::cout << "Total Possible Moves: " << numberOfTrue << std::endl;
-
-    if(numberOfTrue == 34) {
-        t1 = true;
-    } else {
-        t1 = false;
-    }
-
-    if(t1){
+    try {
+        TestManager testManager(boardInit);
+        testManager.runTwoStepMoveTests();
         return 0;
-    } else {
+    } catch (const std::exception& e) {
+        std::cerr << "Test failed: " << e.what() << std::endl;
         return 1;
     }
 }
