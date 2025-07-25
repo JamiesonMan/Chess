@@ -13,7 +13,8 @@ Description:
 Building this Application (via CMake):
     C++14 is required as a minimum, but for developmental ease of mind I am keeping it at C++20.
 
-    Currently compiles test binaries too, but remove this if you are running on toaster, however as I write this now (7/25/2025), even a toaster can compile quick enough.
+    Currently compiles test binaries too, but remove this if you are running on toaster,
+        however as I write this now (7/25/2025), even a toaster can compile quick enough.
 
     Compile Command (Linux Distro):
         mkdir -p build
