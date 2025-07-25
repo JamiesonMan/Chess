@@ -59,7 +59,6 @@ Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMa
     }
 }
 
-
 Square& Board::getBoardAt(size_t row, size_t col) {
     
     if(row >= MAX_ROWS || col >= MAX_COLS){
