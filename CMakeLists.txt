@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10.0)
 project(Chess VERSION 0.1.0 LANGUAGES C CXX)
 
-# Set C++20 standard
+# Set C++20 standard; C++14 build possible as of 7/25/2025
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
