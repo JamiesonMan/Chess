@@ -28,7 +28,7 @@ Board::Board()
         }}) {}
 
 Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping) 
-    : m_checkToResetEnPassant{false} 
+    : m_checkToResetEnPassant{false}, m_castleRights{true, true, true, true, false, false}
 {
     board = std::array<std::array<Square, MAX_COLS>, MAX_ROWS>();
 
@@ -94,6 +94,81 @@ const Piece* Board::getPieceAt(size_t row, size_t col) const {
     return pieces[row][col].get();
 }
 
+// Used to update a rooks data after being moved.
+void Board::_updateRookData(Rook* rook){
+    if(rook->getHasMoved() == false){
+        rook->setHasMoved(true);
+
+        // If a rook has just moved for the first time, then it must be still either on same rank of file of home square.
+        if(rook->getColor() == Color_T::BLACK) {
+            if(rook->getRookShort()) { // If this is a short sided rook.
+                m_castleRights.blackShort = false;
+            } else { // Must be the other one.
+                m_castleRights.blackLong = false;
+            }
+        } else { // White
+            if(rook->getRookShort()) { // if this rook was the short sided rook
+                m_castleRights.whiteShort = false;
+            } else { // Must be the other one.
+                m_castleRights.whiteLong = false;
+            }
+        }
+    }
+}
+
+void Board::_castleRookMove(Castle_T type){
+    unsigned int fromRow{0}, fromCol{0}, toRow{0}, toCol{0};
+    switch(type){
+
+        case Castle_T::BLACK_SHORT:
+            // Rook from (0, MAX_COLS - 1) to (0, MAX_COLS - 3)
+            fromRow = 0;
+            fromCol = MAX_COLS - 1;
+            toRow = fromRow;
+            toCol = MAX_COLS - 3;
+            break;
+        case Castle_T::BLACK_LONG:
+            // Rook from (0, 0) to (0, 3)
+            fromRow = 0;
+            fromCol = 0;
+            toRow = fromRow;
+            toCol = 3;
+            break;
+        case Castle_T::WHITE_SHORT:
+            // Rook from (MAX_ROWS - 1, MAX_COLS - 1) to (MAX_ROWS - 1, MAX_COLS - 3)
+            fromRow = MAX_ROWS - 1;
+            fromCol = MAX_COLS - 1;
+            toRow = fromRow;
+            toCol = MAX_COLS - 3;
+            break;
+        case Castle_T::WHITE_LONG:
+            // Rook from (MAX_ROWS - 1, 0) to (MAX_ROWS - 1, 3)
+            fromRow = MAX_ROWS - 1;
+            fromCol = 0;
+            toRow = fromRow;
+            toCol = 3;
+            break;
+    }
+
+    Square& from = getBoardAt(fromRow, fromCol);
+    Square& to = getBoardAt(toRow, toCol);
+
+    std::unique_ptr<Piece>& movingPiece = pieces[fromRow][fromCol];
+    // Move the piece
+    pieces[toRow][toCol] = std::move(movingPiece); // Transfer ownership
+    pieces[fromRow][fromCol] = nullptr;               // Clear source
+
+    // Update the piece's position reference
+    pieces[toRow][toCol]->setSquarePosition(to);
+
+    // Update square occupancy
+    from.setOccupied(false);
+    to.setOccupied(true);
+
+    Rook* rook = dynamic_cast<Rook*>(pieces[toRow][toCol].get());
+    _updateRookData(rook);
+}
+
 // Actual move execution
 void Board::moveTo(Square& from, Square& to) {
     size_t fromRow = from.getRow();
@@ -111,7 +186,7 @@ void Board::moveTo(Square& from, Square& to) {
     if(!movingPiece->isValidMove(to)){
         throw std::invalid_argument("Invalid Move!");
     }
-
+    // Check for castle move, move the rook
     // Check for en passant capture
     bool isEnPassant = false;
     if(movingPiece->getType() == Piece_T::PAWN) {
@@ -137,6 +212,28 @@ void Board::moveTo(Square& from, Square& to) {
                     getBoardAt(fromRow, toCol).setOccupied(false);
                 }
             }
+        }
+    } else if (movingPiece->getType() == Piece_T::KING){
+        int deltaRow = static_cast<int>(to.getRow()) - static_cast<int>(from.getRow());
+        int deltaCol = static_cast<int>(to.getCol()) - static_cast<int>(from.getCol());
+
+        King* king = dynamic_cast<King*>(movingPiece.get());
+        switch(king->getColor()){
+            case Color_T::BLACK:
+                if(deltaCol == 2 && deltaRow == 0) { // Move is a valid black king castle short move.
+                    _castleRookMove(Castle_T::BLACK_SHORT);
+                } else if (deltaCol == -2 && deltaRow == 0){ // Move is a valid black king castle long move.
+                    _castleRookMove(Castle_T::BLACK_LONG);
+                }
+                break;
+            
+            case Color_T::WHITE:
+                if(deltaCol == 2 && deltaRow == 0) { // Move is a valid white king castle short move.
+                    _castleRookMove(Castle_T::WHITE_SHORT);
+                } else if (deltaCol == -2 && deltaRow == 0){ // Move is a white king castle long move.
+                    _castleRookMove(Castle_T::WHITE_LONG);
+                }
+                break;
         }
     }
 
@@ -173,51 +270,72 @@ void Board::moveTo(Square& from, Square& to) {
         setCheckToResetEnPassant(false);
     }
 
-    if(pieces[toRow][toCol]->getType() == Piece_T::PAWN){
-        Pawn* pawn = dynamic_cast<Pawn*>(pieces[toRow][toCol].get());
-
-        if(pawn->getEnPassantCaptureStatus()){
-            pawn->setEnPassantCaptureStatus(false);
-        } else {
-            if(pawn->getColor() == Color_T::BLACK && toRow == 3 && pawn->getHasMoved() == false){ // If we just moved 2.
-                pawn->setEnPassantCaptureStatus(true);
-                setCheckToResetEnPassant(true);
-            } else if (pawn->getColor() == Color_T::WHITE && toRow == 4 && pawn->getHasMoved() == false){
-                pawn->setEnPassantCaptureStatus(true);
-                setCheckToResetEnPassant(true);
+    // Piece dependent updates, pawn is complicated, however rook and king cases update hasMoved var; used to determine if king can castle.
+    switch(pieces[toRow][toCol]->getType()){
+        case Piece_T::PAWN: {
+            Pawn* pawn = dynamic_cast<Pawn*>(pieces[toRow][toCol].get());
+            if(pawn->getEnPassantCaptureStatus()){
+                pawn->setEnPassantCaptureStatus(false);
+            } else {
+                if(pawn->getColor() == Color_T::BLACK && toRow == 3 && pawn->getHasMoved() == false){ // If we just moved 2 as black.
+                    pawn->setEnPassantCaptureStatus(true);
+                    setCheckToResetEnPassant(true);
+                } else if (pawn->getColor() == Color_T::WHITE && toRow == 4 && pawn->getHasMoved() == false){ // If we just moved 2 as white.
+                    pawn->setEnPassantCaptureStatus(true);
+                    setCheckToResetEnPassant(true);
+                }
             }
+            pawn->setHasMoved(true);
+            // Handle pawn promotion
+            if(pawnCanPromote(to, pieces[toRow][toCol]->getColor())){
+                Color_T pawnColor = pieces[toRow][toCol]->getColor();
+                Piece_T promotionValue = _promptForPromotion(pawnColor);
+
+                pieces[toRow][toCol].reset(); // Free the pawn
+                to.setOccupied(false); // Reset square occupied status
+                switch(promotionValue){
+                    case Piece_T::QUEEN:
+                        pieces[toRow][toCol] = std::make_unique<Queen>(Piece_T::QUEEN, pawnColor, to, *this);
+                        break;
+                    case Piece_T::ROOK:
+                        pieces[toRow][toCol] = std::make_unique<Rook>(Piece_T::ROOK, pawnColor, to, *this);
+                        break;
+                    case Piece_T::BISHOP:
+                        pieces[toRow][toCol] = std::make_unique<Bishop>(Piece_T::BISHOP, pawnColor, to, *this);
+                        break;
+                    case Piece_T::KNIGHT:
+                        pieces[toRow][toCol] = std::make_unique<Knight>(Piece_T::KNIGHT, pawnColor, to, *this);
+                        break;
+                    default:
+                        pieces[toRow][toCol] = std::make_unique<Queen>(Piece_T::QUEEN, pawnColor, to, *this);
+                }
+                to.setOccupied(true); // Set it back to occupied
+            }
+            break;
         }
+        
+        case Piece_T::KING: {
+            King* king = dynamic_cast<King*>(pieces[toRow][toCol].get());
 
-        pawn->setHasMoved(true);
-
-        // Handle pawn promotion
-        if(pawnCanPromote(to, pieces[toRow][toCol]->getColor())){
-
-            Color_T pawnColor = pieces[toRow][toCol]->getColor();
-
-            Piece_T promotionValue = _promptForPromotion(pawnColor);
-
-            pieces[toRow][toCol].reset(); // Free the pawn
-            to.setOccupied(false); // Reset square occupied status
-
-            switch(promotionValue){
-                case Piece_T::QUEEN:
-                    pieces[toRow][toCol] = std::make_unique<Queen>(Piece_T::QUEEN, pawnColor, to, *this);
-                    break;
-                case Piece_T::ROOK:
-                    pieces[toRow][toCol] = std::make_unique<Rook>(Piece_T::ROOK, pawnColor, to, *this);
-                    break;
-                case Piece_T::BISHOP:
-                    pieces[toRow][toCol] = std::make_unique<Bishop>(Piece_T::BISHOP, pawnColor, to, *this);
-                    break;
-                case Piece_T::KNIGHT:
-                    pieces[toRow][toCol] = std::make_unique<Knight>(Piece_T::KNIGHT, pawnColor, to, *this);
-                    break;
-                default:
-                    pieces[toRow][toCol] = std::make_unique<Queen>(Piece_T::QUEEN, pawnColor, to, *this);
+            if(king->getHasMoved() == false){
+                king->setHasMoved(true);
             }
-            
-            to.setOccupied(true); // Set it back to occupied
+
+            if(king->getColor() == Color_T::BLACK) {
+                m_castleRights.blackLong = false;
+                m_castleRights.blackShort = false;
+            } else {
+                m_castleRights.whiteLong = false;
+                m_castleRights.blackLong = false;
+            }
+
+            break;
+        }
+        
+        case Piece_T::ROOK: {
+            Rook* rook = dynamic_cast<Rook*>(pieces[toRow][toCol].get());
+            _updateRookData(rook);
+            break;
         }
     }
 }   
@@ -399,16 +517,93 @@ bool Board::validKingMove(const Square& from, const Square& to, Color_T kingColo
     int deltaRow = static_cast<int>(moveData.toRow) - static_cast<int>(moveData.fromRow);
     int deltaCol = static_cast<int>(moveData.toCol) - static_cast<int>(moveData.fromCol);
 
+    // Add castle rights, long and short, O-O or O-O-O.
     if(!(abs(deltaRow) <= 1 && abs(deltaCol) <= 1)) { // King can only move 1 square in any direction
-        return false; 
+        if(!_isValidCastleMove(moveData, kingColor)){ // or castle
+            return false; 
+        }
     } 
 
     const Piece* p = getPieceAt(moveData.toRow, moveData.toCol);
     if(p){
         if(p->getColor() == kingColor){ return false; } // Cant take a friendly piece.
     }
-     
+
     return true;
+}
+
+// Nasty function, refactor in a not so terrible way soon.
+bool Board::_isValidCastleMove(const MoveCoordsData& moveData, Color_T kingColor) const{
+    const King* king = dynamic_cast<const King*>(getPieceAt(moveData.fromRow, moveData.fromCol));
+
+    if(king->getHasMoved() == false){ // If the king hasnt moved.
+
+        const Piece* pieceLandingOn = getPieceAt(moveData.toRow, moveData.toCol);
+        if(pieceLandingOn){ // King actually cant capture an enemy piece via castle.
+            return false;
+        }
+
+        switch(kingColor){
+            case Color_T::BLACK: {
+                if(moveData.toCol == MAX_COLS - 2 && moveData.toRow == 0){ // Black castling short
+                    const Piece* p = getPieceAt(0, MAX_COLS - 1); // Possible rook?
+                    if(p){ // If there is a piece
+                        if(p->getType() == Piece_T::ROOK){ // If that piece is a rook
+                            const Rook* rook = dynamic_cast<const Rook*>(p); // Safely cast to a Rook*
+                            if(rook->getHasMoved() == false){ // Determine if it has moved.
+                                if(!_checkRankFileBlocked(moveData, 0, 2)){ // If no pieces in the way.
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                } else if (moveData.toCol == 2 && moveData.toRow == 0){ // Black castling long
+                    const Piece* p = getPieceAt(0, 0); // Possible rook?
+                    if(p){ // If there is a piece
+                        if(p->getType() == Piece_T::ROOK){ // If that piece is a rook
+                            const Rook* rook = dynamic_cast<const Rook*>(p); // Safely cast to a Rook*
+                            if(rook->getHasMoved() == false){ // Determine if it has moved.
+                                if(!_checkRankFileBlocked(moveData, 0, -2)){ // If no pieces in the way.
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            case Color_T::WHITE: {
+                if(moveData.toCol == MAX_COLS - 2 && moveData.toRow == MAX_ROWS - 1){ // White castling short
+                    const Piece* p = getPieceAt(MAX_ROWS - 1, MAX_COLS - 1); // Possible rook?
+                    if(p){ // If there is a piece
+                        if(p->getType() == Piece_T::ROOK){ // If that piece is a rook
+                            const Rook* rook = dynamic_cast<const Rook*>(p); // Safely cast to a Rook*
+                            if(rook->getHasMoved() == false){ // Determine if it has moved.
+                                if(!_checkRankFileBlocked(moveData, 0, 2)){ // If no pieces in the way.
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                } else if (moveData.toCol == 2 && moveData.toRow == MAX_ROWS - 1){ // White castling long
+                    const Piece* p = getPieceAt(MAX_ROWS - 1, 0); // Possible rook?
+                    if(p){ // If there is a piece
+                        if(p->getType() == Piece_T::ROOK){ // If that piece is a rook
+                            const Rook* rook = dynamic_cast<const Rook*>(p); // Safely cast to a Rook*
+                            if(rook->getHasMoved() == false){ // Determine if it has moved.
+                                if(!_checkRankFileBlocked(moveData, 0, -2)){ // If no pieces in the way.
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+        }
+    }
+    return false;
 }
 
 bool Board::_checkRankFileBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const {
@@ -452,9 +647,6 @@ bool Board::_checkRankFileBlocked(const MoveCoordsData& moveData, int deltaRow, 
             row += rankDir;
         }
     }
-
-    
-    
     return false; // Path is clear
 }
 

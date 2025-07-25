@@ -7,9 +7,22 @@
 #include <ostream>
 #include <memory>
 #include <sstream>
+#include "Rook.h"
 
 class Board final {
     friend std::ostream& operator<<(std::ostream& output, const Board& board);
+
+    struct MoveCoordsData {
+        unsigned int fromRow, fromCol;
+        unsigned int toRow, toCol;
+    };
+
+    // Struct to keep track of castling rights.
+    struct CastleRights {
+        bool whiteLong, whiteShort, blackLong, blackShort, blackCastled, whiteCastled;
+    };
+
+    enum class Castle_T : unsigned int { BLACK_SHORT, BLACK_LONG, WHITE_SHORT, WHITE_LONG }; // To determine a type of castle move.
 
     public:
         static const size_t MAX_ROWS{8};
@@ -51,12 +64,14 @@ class Board final {
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS> board;
         std::array<std::array<std::unique_ptr<Piece>, MAX_COLS>, MAX_ROWS> pieces;
 
-        struct MoveCoordsData {
-            unsigned int fromRow, fromCol;
-            unsigned int toRow, toCol;
-        };
+        CastleRights m_castleRights;
 
         bool m_checkToResetEnPassant;
+
+        // Automatically moves rook to correct location
+        void _castleRookMove(Castle_T);
+
+        void _updateRookData(Rook* rook);
 
         bool _prelimMoveCheck(const MoveCoordsData&) const;
 
@@ -77,6 +92,8 @@ class Board final {
 
         bool _checkDiagBlocked(const MoveCoordsData&, int deltaRow, int deltaCol) const;
         bool _checkRankFileBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const;
+
+        bool _isValidCastleMove(const MoveCoordsData& moveData, Color_T kingColor) const;
 
         Piece_T _promptForPromotion(Color_T pawnColor) const;
 
