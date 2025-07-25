@@ -763,7 +763,7 @@ void Board::printBoard() const {
 
 std::string Board::boardToString() const {
     std::ostringstream output;
-
+    output << "                BLACK\n\n";
     output << "  +---+---+---+---+---+---+---+---+\n";
     
     // Traverse board.
@@ -798,8 +798,8 @@ std::string Board::boardToString() const {
         output << "|\n";
         output << "  +---+---+---+---+---+---+---+---+\n";
     }
-    output << "    a   b   c   d   e   f   g   h\n";
-
+    output << "    a   b   c   d   e   f   g   h\n\n";
+    output << "                WHITE\n";
     return output.str();
 }
 
@@ -821,6 +821,7 @@ void Board::notationToCoords(const std::string& notation, unsigned int& row, uns
     if(rowChar < '1' || rowChar > '8') {
         throw std::invalid_argument("Invalid row: must be 1-8");
     }
+
     row = 8 - (rowChar - '0');
 }
 

@@ -39,8 +39,13 @@ void Game::_loop(std::string square1, std::string square2, unsigned int fromRow,
                 std::getline(std::cin, square2);
                 std::cout << std::endl;
                 this->board.notationToCoords(square2, toRow, toCol);
+                
+                
             } catch(const std::exception& e){
                 error << e.what() << "\n" << std::endl;
+                square1.clear();
+                square2.clear();
+                fromRow = 0, fromCol = 0, toRow = 0, toCol = 0;
             }
         } while (fromRow > 7 || fromCol > 7 || toRow > 7 || fromRow > 7);
 
