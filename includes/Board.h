@@ -31,7 +31,7 @@ class Board final {
         void printBoard() const;
         std::string boardToString() const;
 
-        // Move member function
+        // Move validation functions.
         bool validPawnMove(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved) const;
         bool validBishopMove(const Square& from, const Square& to, Color_T bishopColor) const;
         bool validKnightMove(const Square& from, const Square& to, Color_T knightColor) const;
@@ -68,6 +68,7 @@ class Board final {
         bool _isValidOneStepMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied) const;
         bool _isOneStepMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
 
+        // Pawn attacking
         bool _isValidAttackMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied) const;
         bool _isAttackRightMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
         bool _isAttackLeftMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
