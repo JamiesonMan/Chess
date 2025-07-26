@@ -12,7 +12,7 @@ This library provides chess board visualization and state management:
 
 ## API Usage
 
-### New Architecture - Display Only
+### New Architecture - Display Only (TODO: Move game logic from chess_game lib to chess_engine lib leave board representation.)
 
 ```cpp
 #include "Game.h"
@@ -105,12 +105,12 @@ g++ -std=c++20 your_main.cpp -L. -lchess_game -Ipath/to/includes/
 
 ## Game Rules Implemented
 
- **Standard Movement** - All pieces move according to chess rules  
- **Castling** - Both kingside and queenside castling  
- **En Passant** - Pawn captures en passant  
- **Pawn Promotion** - Pawns promote to any piece  
- **Check Detection** - Identifies when king is in check  
- **Game State** - Tracks turns, moves, and game status  
+- **Standard Movement** - All pieces move according to chess rules  
+- **Castling** - Both kingside and queenside castling  
+- **En Passant** - Pawn captures en passant  
+- **Pawn Promotion** - Pawns promote to any piece  
+- **Check Detection** - Identifies when king is in check  
+- **Game State** - Tracks turns, moves, and game status  
 
 ## Testing
 
