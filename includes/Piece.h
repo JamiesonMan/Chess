@@ -3,6 +3,7 @@
 #include "Colors.h" // Color_T - White and Black.
 #include <string>
 #include <memory>
+#include <vector>
 
 class Board;
 
@@ -20,6 +21,11 @@ class Piece {
         Color_T getColor() const;
         void setColor(Color_T);
 
+        const std::vector<const Piece*>& getAttacking() const;
+
+        void addToAttacking(const Piece*);
+        void deleteFromAttacking(size_t indexToErase);
+
         static std::string typeToString(Piece_T type);
     
         const Board& getBoard() const;
@@ -30,11 +36,16 @@ class Piece {
         unsigned int getValue() const; // return enum class value for the piece type.
 
         virtual bool isValidMove(const Square& toSquare) const = 0; // pure virtual. Based on derived class implementation.
+        virtual void updateAttacking() = 0;
         virtual std::string toString() const; // Interpret the Piece_T in their own implementation.
+
+        void _clearAttacking();
 
     private:
         Piece_T type;
         Color_T color;
         const Square* positionRef;
         const Board& boardRef;
+
+        std::vector<const Piece*> attacking;
 };

@@ -6,6 +6,7 @@
 #include <cctype>
 #include <cmath>
 #include <limits>
+#include <algorithm>
 
 #include "Pawn.h"
 #include "Bishop.h"
@@ -28,7 +29,7 @@ Board::Board()
         }}) {}
 
 Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping) 
-    : m_checkToResetEnPassant{false}, m_castleRights{true, true, true, true, false, false}
+    : m_checkToResetEnPassant{false}, m_castleRights{true, true, true, true, false, false}, m_blackKingInCheck{false}, m_whiteKingInCheck{false}
 {
     board = std::array<std::array<Square, MAX_COLS>, MAX_ROWS>();
 
@@ -54,6 +55,25 @@ Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMa
                 Color_T pieceColor = std::isupper(pieceChar) ? Color_T::WHITE : Color_T::BLACK;
                 pieces[row][col] = _createPiece(pieceChar, pieceColor, board[row][col]);
                 getBoardAt(row, col).setOccupied(true);
+            }
+        }
+    }
+
+    // Populate each pieces attacking std::vector<const Square*>.
+    for(size_t row = 0; row < MAX_ROWS; ++row) {
+        for(size_t col = 0; col < MAX_COLS; ++col) {
+            Piece* p = pieces[row][col].get();
+            if(!p){continue;} // If no piece here, move on.
+            for(size_t rowJ = 0; rowJ < MAX_ROWS; ++rowJ) {
+                for(size_t colJ = 0; colJ < MAX_COLS; ++colJ) {
+                    const Square& to = getBoardAt(rowJ, colJ);
+                    if(to.isOccupied()){ // If this square has a piece on it.
+                        const Piece* attackedPiece = pieces[rowJ][colJ].get();
+                        if(p->isValidMove(to)){ // if this piece has a valid move to it.
+                            p->addToAttacking(attackedPiece); // Add this piece to the vector of attacked pieces for this piece.
+                        }
+                    }
+                }
             }
         }
     }
@@ -169,8 +189,185 @@ void Board::_castleRookMove(Castle_T type){
     _updateRookData(rook);
 }
 
+bool Board::_wouldLeaveKingInCheck(const Square& from, const Square& to, Color_T movingPieceColor) const {
+    // Create hypothetical move state
+    HypotheticalMove move(from.getRow(), from.getCol(), to.getRow(), to.getCol());
+    
+    // Get king position after the hypothetical move
+    auto [kingRow, kingCol] = move.getKingPosition(movingPieceColor, *this);
+    
+    // Check if any enemy piece can attack the king at its (possibly new) position
+    for(size_t row = 0; row < MAX_ROWS; ++row) {
+        for(size_t col = 0; col < MAX_COLS; ++col) {
+            const Piece* piece = move.getPieceAt(row, col, *this);
+            if(!piece) continue;
+            
+            // Skip pieces of the same color as the moving piece
+            if(piece->getColor() == movingPieceColor) continue;
+            
+            // Check if this piece can attack the king's (possibly new) position
+            if(HypotheticalMoveValidator::canPieceAttackSquare(piece, row, col, kingRow, kingCol, move, *this)) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+// HypotheticalMove struct method implementations
+Board::HypotheticalMove::HypotheticalMove(size_t fRow, size_t fCol, size_t tRow, size_t tCol) 
+    : fromRow(fRow), fromCol(fCol), toRow(tRow), toCol(tCol) {}
+
+bool Board::HypotheticalMove::isSquareOccupied(size_t row, size_t col, const Board& board) const {
+    // If this is where piece moved FROM, it's now empty
+    if(row == fromRow && col == fromCol) return false;
+    
+    // If this is where piece moved TO, it's now occupied
+    if(row == toRow && col == toCol) return true;
+    
+    // Otherwise, use current board state
+    return board.getPieceAt(row, col) != nullptr;
+}
+
+const Piece* Board::HypotheticalMove::getPieceAt(size_t row, size_t col, const Board& board) const {
+    // If this is where piece moved FROM, it's now empty
+    if(row == fromRow && col == fromCol) return nullptr;
+    
+    // If this is where piece moved TO, return the moved piece
+    if(row == toRow && col == toCol) return board.getPieceAt(fromRow, fromCol);
+    
+    // Otherwise, use current board state
+    return board.getPieceAt(row, col);
+}
+
+std::pair<size_t, size_t> Board::HypotheticalMove::getKingPosition(Color_T color, const Board& board) const {
+    const King* king = (color == Color_T::WHITE) ? board.getWhiteKing() : board.getBlackKing();
+    size_t kingRow = king->getSquarePosition().getRow();
+    size_t kingCol = king->getSquarePosition().getCol();
+    
+    // If we're moving the king, update its position
+    if(kingRow == fromRow && kingCol == fromCol) {
+        return {toRow, toCol};
+    }
+    
+    return {kingRow, kingCol};
+}
+
+// Static method implementations for HypotheticalMoveValidator
+bool Board::HypotheticalMoveValidator::canPieceAttackSquare(const Piece* piece, size_t pieceRow, size_t pieceCol, 
+                                                          size_t targetRow, size_t targetCol, 
+                                                          const HypotheticalMove& move, const Board& board) {
+    // Check basic bounds
+    if(pieceRow >= MAX_ROWS || pieceCol >= MAX_COLS || 
+       targetRow >= MAX_ROWS || targetCol >= MAX_COLS) {
+        return false;
+    }
+    
+    // Can't attack own square
+    if(pieceRow == targetRow && pieceCol == targetCol) {
+        return false;
+    }
+    
+    int deltaRow = static_cast<int>(targetRow) - static_cast<int>(pieceRow);
+    int deltaCol = static_cast<int>(targetCol) - static_cast<int>(pieceCol);
+    
+    // Check if move is valid for this piece type
+    switch(piece->getType()) {
+        case Piece_T::PAWN: {
+            // Pawn attacks diagonally
+            int direction = (piece->getColor() == Color_T::WHITE) ? -1 : 1;
+            return (deltaRow == direction && abs(deltaCol) == 1);
+        }
+        
+        case Piece_T::ROOK: {
+            // Rook moves in straight lines
+            if(deltaRow != 0 && deltaCol != 0) return false;
+            return isPathClear(pieceRow, pieceCol, targetRow, targetCol, move, board);
+        }
+        
+        case Piece_T::BISHOP: {
+            // Bishop moves diagonally
+            if(abs(deltaRow) != abs(deltaCol)) return false;
+            return isPathClear(pieceRow, pieceCol, targetRow, targetCol, move, board);
+        }
+        
+        case Piece_T::QUEEN: {
+            // Queen moves like rook or bishop
+            if(deltaRow != 0 && deltaCol != 0 && abs(deltaRow) != abs(deltaCol)) return false;
+            return isPathClear(pieceRow, pieceCol, targetRow, targetCol, move, board);
+        }
+        
+        case Piece_T::KNIGHT: {
+            // Knight moves in L-shape
+            return ((abs(deltaRow) == 2 && abs(deltaCol) == 1) || 
+                    (abs(deltaRow) == 1 && abs(deltaCol) == 2));
+        }
+        
+        case Piece_T::KING: {
+            // King moves one square in any direction
+            return (abs(deltaRow) <= 1 && abs(deltaCol) <= 1);
+        }
+    }
+    
+    return false;
+}
+
+bool Board::HypotheticalMoveValidator::isPathClear(size_t fromRow, size_t fromCol, size_t toRow, size_t toCol,
+                                                 const HypotheticalMove& move, const Board& board) {
+    
+    int deltaRow = static_cast<int>(toRow) - static_cast<int>(fromRow);
+    int deltaCol = static_cast<int>(toCol) - static_cast<int>(fromCol);
+    
+    // Determine step direction
+    int rowStep = (deltaRow == 0) ? 0 : (deltaRow > 0) ? 1 : -1;
+    int colStep = (deltaCol == 0) ? 0 : (deltaCol > 0) ? 1 : -1;
+    
+    // Check each square along the path (excluding start and end)
+    int currentRow = static_cast<int>(fromRow) + rowStep;
+    int currentCol = static_cast<int>(fromCol) + colStep;
+    
+    while(currentRow != static_cast<int>(toRow) || currentCol != static_cast<int>(toCol)) {
+        size_t checkRow = static_cast<size_t>(currentRow);
+        size_t checkCol = static_cast<size_t>(currentCol);
+        
+        // Use the hypothetical move state to check occupancy
+        if(move.isSquareOccupied(checkRow, checkCol, board)) {
+            return false; // Path is blocked
+        }
+        
+        currentRow += rowStep;
+        currentCol += colStep;
+    }
+    
+    return true; // Path is clear
+}
+
+bool Board::isLegalMove(const Square& from, const Square& to, const std::unique_ptr<Piece>& movingPiece) const {
+    if(!movingPiece) {
+        throw std::invalid_argument("Error: No piece at source square.");
+    } 
+    
+    if(!movingPiece->isValidMove(to)){
+        throw std::invalid_argument("Invalid Move!");
+    }
+    
+    // Check if this move would leave the king in check
+    if (_wouldLeaveKingInCheck(from, to, movingPiece->getColor())){
+        // Determine if king is currently in check to give appropriate error message
+        if((movingPiece->getColor() == Color_T::WHITE && getWhiteKingInCheck()) ||
+           (movingPiece->getColor() == Color_T::BLACK && getBlackKingInCheck())) {
+            throw std::invalid_argument("Invalid Move! Must get out of check!");
+        } else {
+            throw std::invalid_argument("Invalid Move! Cannot put your own king in check!");
+        }
+    }
+    
+    return true;
+}
+
 // Actual move execution
-void Board::moveTo(Square& from, Square& to) {
+Board::Game_Status Board::moveTo(Square& from, Square& to) {
     size_t fromRow = from.getRow();
     size_t fromCol = from.getCol();
     size_t toRow = to.getRow();
@@ -178,14 +375,13 @@ void Board::moveTo(Square& from, Square& to) {
 
     // Get the piece to move
     std::unique_ptr<Piece>& movingPiece = pieces[fromRow][fromCol];
-    if(!movingPiece) {
-        throw std::invalid_argument("Error: No piece at source square.");
+    
+    bool legalMoveResult = isLegalMove(from, to, movingPiece);
+
+    if(!legalMoveResult) {
+        throw std::invalid_argument("Error: Must supply a legal move.");
     }
 
-    // Validate the move
-    if(!movingPiece->isValidMove(to)){
-        throw std::invalid_argument("Invalid Move!");
-    }
     // Check for castle move, move the rook
     // Check for en passant capture
     bool isEnPassant = false;
@@ -338,7 +534,151 @@ void Board::moveTo(Square& from, Square& to) {
             break;
         }
     }
-}   
+
+    for(size_t row = 0; row < MAX_ROWS; ++row){
+        for(size_t col = 0; col < MAX_COLS; ++col){
+            Piece* somePiece = pieces[row][col].get();
+            if(!somePiece){continue;}
+            somePiece->updateAttacking(); // Update the piece's attacking vector after changing position.
+        }
+    }
+
+    Piece* p = pieces[toRow][toCol].get();
+
+    if(_checkCheckmate()) {
+        return Game_Status::CHECKMATE_END;
+    } else if (_checkDraw(p->getColor() == Color_T::WHITE ? Color_T::BLACK : Color_T::WHITE)){
+        return Game_Status::DRAW_END;
+    } else if (p->getColor() == Color_T::BLACK) {
+        if(_kingInCheck(getWhiteKing())){
+            _setWhiteKingInCheck(true);
+            return Game_Status::IN_CHECK;
+        }
+    } else if (p->getColor() == Color_T::WHITE){
+        if(_kingInCheck(getBlackKing())){
+            _setBlackKingInCheck(true);
+            return Game_Status::IN_CHECK;
+        }
+    }
+
+    _setBlackKingInCheck(false);
+    _setWhiteKingInCheck(false);
+
+    return Game_Status::CONTINUE;
+}
+
+void Board::_setBlackKingInCheck(bool newVal) {m_blackKingInCheck = newVal;}
+void Board::_setWhiteKingInCheck(bool newVal) {m_whiteKingInCheck = newVal;}
+
+bool Board::getBlackKingInCheck() const {return m_blackKingInCheck;}
+bool Board::getWhiteKingInCheck() const {return m_whiteKingInCheck;}
+
+// Can the king be captured by a piece if this move were to occur?
+bool Board::_kingInCheck(const Piece* king) const {
+    for(size_t row = 0; row < MAX_ROWS; ++row){
+        for(size_t col = 0; col < MAX_COLS; ++col){
+            const Piece* p = pieces[row][col].get();
+            if(!p){continue;}
+            const std::vector<const Piece*>& attacking = p->getAttacking();
+            if(std::find(attacking.begin(), attacking.end(), king) != attacking.end()){ // Found a piece attacking the king.
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool Board::_kingInCheck(const Piece* king, const std::array<std::array<std::unique_ptr<Piece>, MAX_COLS>, MAX_ROWS>& piecesCopy) const {
+    for(size_t row = 0; row < MAX_ROWS; ++row){
+        for(size_t col = 0; col < MAX_COLS; ++col){
+            const Piece* p = piecesCopy[row][col].get();
+            if(!p){continue;}
+            const std::vector<const Piece*>& attacking = p->getAttacking();
+            if(std::find(attacking.begin(), attacking.end(), king) != attacking.end()){ // Found a piece attacking the king.
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool Board::_checkCheckmate() const {
+    // Check if either king is in check
+    bool whiteInCheck = _kingInCheck(m_whiteKing);
+    bool blackInCheck = _kingInCheck(m_blackKing);
+    
+    // If no king is in check, it's not checkmate
+    if(!whiteInCheck && !blackInCheck) return false;
+    
+    Color_T checkedColor = whiteInCheck ? Color_T::WHITE : Color_T::BLACK;
+    
+    // Try all possible moves for the checked player
+    for(size_t fromRow = 0; fromRow < MAX_ROWS; ++fromRow) {
+        for(size_t fromCol = 0; fromCol < MAX_COLS; ++fromCol) {
+            const Piece* piece = getPieceAt(fromRow, fromCol);
+            if(!piece || piece->getColor() != checkedColor) continue;
+            
+            // Try moving this piece to every square
+            for(size_t toRow = 0; toRow < MAX_ROWS; ++toRow) {
+                for(size_t toCol = 0; toCol < MAX_COLS; ++toCol) {
+                    Square from = getBoardAt(fromRow, fromCol);
+                    Square to = getBoardAt(toRow, toCol);
+                    
+                    // Skip invalid basic moves
+                    if(!piece->isValidMove(to)) continue;
+                    
+                    // Check if this move would get out of check
+                    if(!_wouldLeaveKingInCheck(from, to, checkedColor)) {
+                        return false; // Found a legal move - not checkmate
+                    }
+                }
+            }
+        }
+    }
+    
+    return true; // No legal moves found - checkmate!
+}
+bool Board::_checkDraw(Color_T currentPlayerColor) const {
+    // Check if current player's king is in check
+    const King* currentKing = (currentPlayerColor == Color_T::WHITE) ? m_whiteKing : m_blackKing;
+    bool currentPlayerInCheck = _kingInCheck(currentKing);
+    
+    // Stalemate: King NOT in check but no legal moves
+    if(!currentPlayerInCheck) {
+        // Try all possible moves for the current player
+        for(size_t fromRow = 0; fromRow < MAX_ROWS; ++fromRow) {
+            for(size_t fromCol = 0; fromCol < MAX_COLS; ++fromCol) {
+                const Piece* piece = getPieceAt(fromRow, fromCol);
+                if(!piece || piece->getColor() != currentPlayerColor) continue;
+                
+                // Try moving this piece to every square
+                for(size_t toRow = 0; toRow < MAX_ROWS; ++toRow) {
+                    for(size_t toCol = 0; toCol < MAX_COLS; ++toCol) {
+                        Square from = getBoardAt(fromRow, fromCol);
+                        Square to = getBoardAt(toRow, toCol);
+                        
+                        // Skip invalid basic moves
+                        if(!piece->isValidMove(to)) continue;
+                        
+                        // Check if this move is legal (doesn't leave king in check)
+                        if(!_wouldLeaveKingInCheck(from, to, currentPlayerColor)) {
+                            return false; // Found a legal move - not stalemate
+                        }
+                    }
+                }
+            }
+        }
+        
+        return true; // No legal moves found and not in check - stalemate!
+    }
+    
+    // TODO: Add other draw conditions:
+    // - Insufficient material (K vs K, K+B vs K, K+N vs K, etc.)
+    // - 50-move rule
+    // - Threefold repetition
+    
+    return false; // Not a draw
+}
 
 Piece_T Board::_promptForPromotion(Color_T pawnColor) const {
     std::ostringstream error{};
@@ -384,7 +724,7 @@ Piece_T Board::_promptForPromotion(Color_T pawnColor) const {
 bool Board::validPawnMove(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved) const {
 
     MoveCoordsData moveData{from.getRow(), from.getCol(), to.getRow(), to.getCol()};
-    
+
     if(!_prelimMoveCheck(moveData)){ return false; }
 
     if(_isTwoStepMove(pawnColor, moveData)){
@@ -535,6 +875,11 @@ bool Board::validKingMove(const Square& from, const Square& to, Color_T kingColo
 // Nasty function, refactor in a not so terrible way soon.
 bool Board::_isValidCastleMove(const MoveCoordsData& moveData, Color_T kingColor) const{
     const King* king = dynamic_cast<const King*>(getPieceAt(moveData.fromRow, moveData.fromCol));
+
+    // Cannot castle when king is in check
+    if(_kingInCheck(king)){
+        return false;
+    }
 
     if(king->getHasMoved() == false){ // If the king hasnt moved.
 
@@ -705,7 +1050,6 @@ bool Board::pawnCanPromote(const Square& to, Color_T color) const {
 bool Board::_isValidTwoStepMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool pawnHasMoved) const{  
 
     if(pawnHasMoved) { // Start row for pawn black pawn
-        std::cout << "Pawn has already moved" << std::endl;
         return false; 
     } // Can only two step once.
 
@@ -916,6 +1260,50 @@ Piece_T Board::_charToPieceType(char c) {
     }
 }
 
+const King* Board::getBlackKing() const { return m_blackKing; }
+const King* Board::getWhiteKing() const { return m_whiteKing; }
+
+void Board::_setBlackKing(King* newKing) {
+    m_blackKing = newKing;
+}
+
+void Board::_setWhiteKing(King* newKing) {
+    m_whiteKing = newKing;
+}
+// Overload
+std::unique_ptr<Piece> Board::_createPiece(const Piece* p, Square& square) const {
+    Piece_T type = p->getType();
+    Color_T color = p->getColor();
+    unsigned int row = square.getRow();
+    switch(type) {
+        case Piece_T::ROOK:   
+            return std::make_unique<Rook>(type, color, square, *this);
+        case Piece_T::KNIGHT: 
+            return std::make_unique<Knight>(type, color, square, *this);
+        case Piece_T::BISHOP:
+            return std::make_unique<Bishop>(type, color, square, *this);
+        case Piece_T::QUEEN: 
+            return std::make_unique<Queen>(type, color, square, *this); 
+        case Piece_T::KING: {
+            return std::make_unique<King>(type, color, square, *this);
+        }
+        case Piece_T::PAWN:
+            if(color == Color_T::BLACK && row != 1){
+                std::unique_ptr<Pawn> p = std::make_unique<Pawn>(type, color, square, *this);
+                p->setHasMoved(true);
+                return p;
+            } else if (color == Color_T::WHITE && row != 6){
+                std::unique_ptr<Pawn> p = std::make_unique<Pawn>(type, color, square, *this);
+                p->setHasMoved(true);
+                return p;
+            } else {
+                return std::make_unique<Pawn>(type, color, square, *this);
+            }
+            
+        default: throw std::invalid_argument("Invalid piece type");
+    }   
+}
+
 std::unique_ptr<Piece> Board::_createPiece(char pieceChar, Color_T color, const Square& square) {
     Piece_T type = _charToPieceType(pieceChar);
 
@@ -929,8 +1317,11 @@ std::unique_ptr<Piece> Board::_createPiece(char pieceChar, Color_T color, const 
             return std::make_unique<Bishop>(type, color, square, *this);
         case Piece_T::QUEEN: 
             return std::make_unique<Queen>(type, color, square, *this); 
-        case Piece_T::KING:   
-            return std::make_unique<King>(type, color, square, *this); 
+        case Piece_T::KING: {
+            std::unique_ptr<King> king = std::make_unique<King>(type, color, square, *this); 
+            (color == Color_T::BLACK) ? _setBlackKing(king.get()) : _setWhiteKing(king.get()); 
+            return king;
+        }
         case Piece_T::PAWN:
             if(color == Color_T::BLACK && row != 1){
                 std::unique_ptr<Pawn> p = std::make_unique<Pawn>(type, color, square, *this);

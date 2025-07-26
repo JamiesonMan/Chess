@@ -18,6 +18,7 @@ class Rook final : public Piece {
         void setRookShort(bool);
 
         virtual bool isValidMove(const Square& otherSquare) const override;
+        virtual void updateAttacking() override;
     
     private:
         bool hasMoved;

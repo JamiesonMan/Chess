@@ -19,6 +19,21 @@ void Rook::setHasMoved(bool newHasMoved){
     hasMoved = newHasMoved;
 }
 
+void Rook::updateAttacking() {
+    _clearAttacking();
+    for(size_t row = 0; row < Board::MAX_ROWS; ++row) {
+        for(size_t col = 0; col < Board::MAX_COLS; ++col) {
+            const Square& to = getBoard().getBoardAt(row, col);
+            if(to.isOccupied()){
+                const Piece* attackedPiece = getBoard().getPieceAt(row, col);
+                if(isValidMove(to)){
+                    addToAttacking(attackedPiece);
+                }
+            }
+        }
+    }
+}
+
 bool Rook::getHasMoved() const { return hasMoved; }
 
 bool Rook::getRookLong() const { return rookLong;}

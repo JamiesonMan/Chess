@@ -2,9 +2,8 @@
 #include <stdexcept>
 #include <sstream>
 
-
 Piece::Piece(Piece_T pieceType, Color_T pieceColor, const Square& pieceSquareRef, const Board& pieceBoardRef)
-    : type{pieceType}, color{pieceColor}, positionRef{&pieceSquareRef}, boardRef{pieceBoardRef} {
+    : type{pieceType}, color{pieceColor}, positionRef{&pieceSquareRef}, boardRef{pieceBoardRef}, attacking{} {
         
         if(pieceSquareRef.isOccupied()){
             throw std::invalid_argument("Error: A piece cannot be initialized where another piece already exists.");
@@ -37,6 +36,23 @@ std::string Piece::typeToString(Piece_T type) {
             return "King";
         default:
             return "";
+    }
+}
+
+void Piece::addToAttacking(const Piece* pieceToAdd) {
+    attacking.push_back(pieceToAdd);
+}
+void Piece::deleteFromAttacking(size_t indexToErase) {
+     attacking.erase(attacking.begin() + indexToErase);
+}
+
+const std::vector<const Piece*>& Piece::getAttacking() const{
+    return attacking;
+}
+
+void Piece::_clearAttacking(){
+    if(!attacking.empty()){
+        attacking.clear();
     }
 }
 

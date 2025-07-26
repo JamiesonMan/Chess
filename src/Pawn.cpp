@@ -25,6 +25,21 @@ bool Pawn::isValidMove(const Square& toSquare) const {
     return getBoard().validPawnMove(getSquarePosition(), toSquare, getColor(), getHasMoved());
 } 
 
+void Pawn::updateAttacking() {
+    _clearAttacking();
+    for(size_t row = 0; row < Board::MAX_ROWS; ++row) {
+        for(size_t col = 0; col < Board::MAX_COLS; ++col) {
+            const Square& to = getBoard().getBoardAt(row, col);
+            if(to.isOccupied()){
+                if(isValidMove(to)){
+                    const Piece* attackedPiece = getBoard().getPieceAt(row, col);
+                    addToAttacking(attackedPiece);
+                }
+            }
+        }
+    }
+}
+
 std::string Pawn::toString() const {
     std::ostringstream output;
     output << "Piece: " << Piece::typeToString(getType());

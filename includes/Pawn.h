@@ -16,7 +16,7 @@ class Pawn final : public Piece {
         bool getEnPassantCaptureStatus() const;
 
         virtual bool isValidMove(const Square& otherSquare) const override;
-
+        virtual void updateAttacking() override;
         virtual std::string toString() const override;
 
     private:

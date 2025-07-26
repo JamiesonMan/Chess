@@ -12,6 +12,7 @@ class King final : public Piece {
         bool getHasMoved() const;
 
         virtual bool isValidMove(const Square& otherSquare) const override;
+        virtual void updateAttacking() override;
 
     private:
         bool hasMoved;
