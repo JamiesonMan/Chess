@@ -1,43 +1,30 @@
 cmake_minimum_required(VERSION 3.10.0)
 project(Chess VERSION 0.1.0 LANGUAGES C CXX)
 
-# Set C++20 standard; C++14 build possible as of 7/25/2025
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Include directories
-include_directories(includes)
+if(WIN32)
+    if(MSVC)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+    endif()
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+endif()
 
-# Add executable with source files from src directory
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+add_subdirectory(libs/chess_game)
+
 add_executable(Chess
-    src/Board.cpp 
-    src/Colors.cpp 
-    src/Pawn.cpp 
-    src/Bishop.cpp
-    src/Knight.cpp
-    src/Rook.cpp
-    src/Queen.cpp
-    src/King.cpp
-    src/Piece.cpp
-    src/Square.cpp
-    src/Game.cpp
-    Main.cpp
+    src/Main.cpp
 )
 
-add_executable(TwoStepPawnMove
-    src/Board.cpp 
-    src/Colors.cpp 
-    src/Pawn.cpp 
-    src/Piece.cpp
-    src/Bishop.cpp
-    src/Rook.cpp
-    src/Knight.cpp
-    src/Queen.cpp
-    src/King.cpp
-    src/Square.cpp
-    src/Game.cpp
-    tests/TestManager.cpp
-    tests/pawn_tests/two_step_pawn_moves/Main.cpp
-)
+target_link_libraries(Chess chess_game)
+
+# (tests are defined in chess_game)
 enable_testing()
-add_test(NAME TwoStepPawnMove COMMAND TwoStepPawnMove)

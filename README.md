@@ -1,53 +1,89 @@
-CHESS:
-START: 7/20/25
+# Chess Engine Project
 
-README.md last updated: 7/26/2025
+A modular chess application with separate libraries for game logic and AI engine development.
 
-Description:
-    Currently in the early stages of creating what I hope to eventually be a chess engine.
-    First step was to simply create the game of chess. (Completed)
-    Secondly we want to make this much much more memory efficient as to support higher depth thus speed of a simple engine.
-    Thirdly begin using simple pruning algorithms/ hard coded (No Neural Network) evaluation for good or bad moves.
-    Fourth continue improving till satisfied with strength.
+## Project Structure
 
-Building this Application (via CMake):
-    C++14 is required as a minimum, but for developmental ease of mind I am keeping it at C++20.
+- **Main Application** (`src/`) - Interactive chess game interface
+- **chess_game** (`libs/chess_game/`) - Core chess game logic and rules
+- **chess_engine** (`libs/chess_engine/`) - AI engine (future development)
 
-    Currently compiles test binaries too, but remove this if you are running on toaster,
-        however as I write this now (7/25/2025), even a toaster can compile quick enough.
+## Features
 
-    Compile Command (Linux Distro):
-        mkdir -p build
-        cd build
-        cmake ..
-        make
+- Complete chess game implementation with all rules
+- Modular library architecture for extensibility
+- Cross-platform build support (Windows, Linux, macOS)
+- Comprehensive test suite
+- Prepared for AI engine integration via FEN strings
 
-    Windows:
-        With Visual Studio:
-            mkdir build
-            cd build
-            cmake ..
-            cmake --build .
+## Building the Project
 
-        With MinGW/MSYS2:
-            mkdir build
-            cd build
-            cmake .. -G "MinGW Makefiles"
-            mingw32-make
+### Prerequisites
+- CMake 3.10 or higher
+- C++20 compatible compiler
 
-        With Visual Studio IDE:
-            mkdir build
-            cd build
-            cmake .. -G "Visual Studio 17 2022"
-            Then open the generated .sln file in Visual Studio.
+### Linux/macOS
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
 
-Major Inefficiencies:
-    1. Not using bitboards to describe board state of pieces etc.
-    2. toMove() is pretty bad, a better approach I overlooked until I did more research would've been to just return a list of all possible moves in one function call! Now I have to call a crap ton if I want to create a list of possible moves. Currently, there doesn't even exist a list of possible moves to utilize.
+### Windows
 
-Current developmental plan
-    1. Finish basic (inefficient) game. (Completed)
-    2. Refactor inefficient game without any major data structure changes (just checking over current algorithms, testing everything changing logic flow).
-    3. Implement bitboards, move class, etc. (Major change! One that I discovered needs to happen after research)
-    4. Make it chess GUI compatible or create my own simple GUI. (Optional but nice)
-    
+#### Visual Studio (Recommended)
+```cmd
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022"
+cmake --build . --config Release
+```
+
+#### Visual Studio IDE
+```cmd
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022"
+```
+Then open the generated `.sln` file in Visual Studio.
+
+#### MinGW/MSYS2
+```cmd
+mkdir build
+cd build
+cmake .. -G "MinGW Makefiles"
+mingw32-make
+```
+
+## Running the Application
+
+After building, the executable will be in:
+- Linux/macOS: `build/bin/Chess`
+- Windows: `build/bin/Chess.exe`
+
+## Development Roadmap
+
+1. **Basic chess game implementation** - Complete with all rules
+2. **Modular architecture** - Separated into reusable libraries
+3. **Cross-platform support** - Windows, Linux, macOS compatibility
+4. **Chess engine development** - AI with evaluation and search
+5. **Performance optimization** - Bitboards and efficient algorithms
+6. **GUI development** - Enhanced user interface
+
+## Libraries
+
+- [chess_game](libs/chess_game/) - Core game logic and piece movement
+- [chess_engine](libs/chess_engine/) - AI engine (planned)
+
+## Testing
+
+Run tests with:
+```bash
+cd build
+ctest
+```
+
+## Contributing
+
+This project uses a modular design where libraries can be developed independently and communicate via FEN strings for maximum flexibility.
