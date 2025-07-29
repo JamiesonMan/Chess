@@ -17,7 +17,8 @@
 
 
 Board::Board() 
-    : Board({{
+    : Board({{ 
+
             {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'},
             {'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'},
             {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
@@ -43,14 +44,12 @@ Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMa
     // Single loop for both squares and pieces
     for(size_t row = 0; row < MAX_ROWS; ++row) {
         for(size_t col = 0; col < MAX_COLS; ++col) {
-            // Create square with alternating colors
+            // Create board.
             Color_T squareColor = ((row + col) % 2 == 0) ? Color_T::WHITE : Color_T::BLACK;
             board[row][col] = Square{squareColor, static_cast<unsigned int>(row), static_cast<unsigned int>(col)};
             
-            // Get piece character from mapping
+            // Populate Pieces.
             char pieceChar = initBoardMapping[row][col];
-            
-            // Create piece if square is not empty
             if(pieceChar != ' ') {
                 Color_T pieceColor = std::isupper(pieceChar) ? Color_T::WHITE : Color_T::BLACK;
                 pieces[row][col] = _createPiece(pieceChar, pieceColor, board[row][col]);
@@ -63,13 +62,13 @@ Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMa
     for(size_t row = 0; row < MAX_ROWS; ++row) {
         for(size_t col = 0; col < MAX_COLS; ++col) {
             Piece* p = pieces[row][col].get();
-            if(!p){continue;} // If no piece here, move on.
+            if(!p){continue;}
             for(size_t rowJ = 0; rowJ < MAX_ROWS; ++rowJ) {
                 for(size_t colJ = 0; colJ < MAX_COLS; ++colJ) {
                     const Square& to = getBoardAt(rowJ, colJ);
-                    if(to.isOccupied()){ // If this square has a piece on it.
+                    if(to.isOccupied()){
                         const Piece* attackedPiece = pieces[rowJ][colJ].get();
-                        if(p->isValidMove(to)){ // if this piece has a valid move to it.
+                        if(p->isValidMove(to)){ 
                             p->addToAttacking(attackedPiece); // Add this piece to the vector of attacked pieces for this piece.
                         }
                     }
@@ -99,7 +98,7 @@ const Square& Board::getBoardAt(size_t row, size_t col) const {
 bool Board::getCheckToResetEnPassant() const{ return m_checkToResetEnPassant; }
 void Board::setCheckToResetEnPassant(bool val) { m_checkToResetEnPassant = val; }
 
-const std::array<std::array<Square, Board::MAX_COLS>, Board::MAX_ROWS>& Board::getBoard() const{
+const std::array<std::array<Square, Board::MAX_COLS>, Board::MAX_ROWS>& Board::getBoard() const {
     return board;
 }
 
@@ -1019,7 +1018,7 @@ bool Board::_checkDiagBlocked(const MoveCoordsData& moveData, int deltaRow, int 
 }
 
 bool Board::_prelimMoveCheck(const MoveCoordsData& moveData) const {
-    if(moveData.fromCol > 7 || moveData.fromRow > 7 || moveData.toRow > 7 || moveData.toCol > 7) {
+    if(moveData.fromCol >= MAX_COLS || moveData.fromRow >= MAX_ROWS || moveData.toRow >= MAX_ROWS || moveData.toCol >= MAX_COLS) {
         return false;
     }
 
@@ -1047,7 +1046,7 @@ bool Board::pawnCanPromote(const Square& to, Color_T color) const {
     return true;
 }
 
-bool Board::_isValidTwoStepMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool pawnHasMoved) const{  
+bool Board::_isValidTwoStepMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool pawnHasMoved) const {  
 
     if(pawnHasMoved) { // Start row for pawn black pawn
         return false; 
@@ -1102,26 +1101,21 @@ bool Board::_isValidOneStepMove(Color_T pawnColor, const MoveCoordsData& moveDat
 
     switch(pawnColor){
         case Color_T::BLACK: {
-            // Check bounds of to square and get middle square (0-7 indexing)
-            if(moveData.toRow > 7 || moveData.toCol != moveData.fromCol) return false;
+            if(moveData.toRow >= MAX_ROWS || moveData.toCol != moveData.fromCol) return false;
             
             if(!toSquareOccupied){
-                // Need to still implement a function to determine if it would put the king in check.
                 return true; 
             }
         
             return false;
-        }
+        } 
         
         case Color_T::WHITE: {
-            // Check bounds for to square (0-7 indexing)
-            if(moveData.toRow > 7 || moveData.toCol != moveData.fromCol) { return false; }
+            if(moveData.toRow >= MAX_ROWS || moveData.toCol != moveData.fromCol) { return false; }
             
-            if(!toSquareOccupied){ 
-                // *** Need to still implement a function to determine if it would put the kind in check. ***
+            if(!toSquareOccupied){
                 return true; 
             }
-            
             return false;
         }
     }
@@ -1130,10 +1124,8 @@ bool Board::_isValidOneStepMove(Color_T pawnColor, const MoveCoordsData& moveDat
 // Confirm that we are moving 2 rows up or down (black or white) and we remain in same col.
 bool Board::_isOneStepMove(Color_T pawnColor, const MoveCoordsData& moveData) const{
     if(pawnColor == Color_T::BLACK) {
-        // Black pawns move down (increasing row)
         return (moveData.toRow == (moveData.fromRow + 1)) && (moveData.toCol == moveData.fromCol);
     } else {
-        // White pawns move up (decreasing row)
         return (moveData.toRow == (moveData.fromRow - 1)) && (moveData.toCol == moveData.fromCol);
     }
 }
@@ -1143,11 +1135,9 @@ bool Board::_isValidAttackMove(Color_T pawnColor, const MoveCoordsData& moveData
 
     switch(pawnColor){
         case Color_T::BLACK: {
-            // Check bounds of to square (0-7 indexing)
-            if(moveData.toRow > 7 || moveData.toCol > 7) return false;
+            if(moveData.toRow >= MAX_ROWS || moveData.toCol >= MAX_COLS) return false;
             
             if(!toSquareOccupied){ 
-                // Need to still implement a function to determine if it would put the king in check.
                 return false; 
             }
 
@@ -1161,7 +1151,7 @@ bool Board::_isValidAttackMove(Color_T pawnColor, const MoveCoordsData& moveData
         
         case Color_T::WHITE: {
             // Check bounds for to square and get middle square (0-7 indexing)
-            if(moveData.toRow > 5 || moveData.toCol > 7 ) { return false; }
+            if(moveData.toRow >= MAX_ROWS - 2 || moveData.toCol >= MAX_COLS ) { return false; }
             
             if(!toSquareOccupied){ 
                 // Need to still implement a function to determine if it would put the king in check.
@@ -1204,7 +1194,7 @@ bool Board::_isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData,
     switch(pawnColor){
         case Color_T::BLACK: {
             // Check bounds of to square (0-7 indexing)
-            if(moveData.toRow > 7 || moveData.toCol > 7) { return false; }
+            if(moveData.toRow >= MAX_ROWS || moveData.toCol >= MAX_COLS) { return false; }
             
             // Impossible to en passant if a piece is on landing square.
             if(toSquareOccupied){ 
@@ -1226,8 +1216,7 @@ bool Board::_isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData,
         }
         
         case Color_T::WHITE: {
-            // Check bounds of to square (0-7 indexing)
-            if(moveData.toRow > 7 || moveData.toCol > 7) { return false; }
+            if(moveData.toRow >= MAX_ROWS|| moveData.toCol >= MAX_COLS) { return false; }
             
             // Impossible to en passant if a piece is on landing square.
             if(toSquareOccupied){ return false; }
@@ -1270,39 +1259,6 @@ void Board::_setBlackKing(King* newKing) {
 void Board::_setWhiteKing(King* newKing) {
     m_whiteKing = newKing;
 }
-// Overload
-std::unique_ptr<Piece> Board::_createPiece(const Piece* p, Square& square) const {
-    Piece_T type = p->getType();
-    Color_T color = p->getColor();
-    unsigned int row = square.getRow();
-    switch(type) {
-        case Piece_T::ROOK:   
-            return std::make_unique<Rook>(type, color, square, *this);
-        case Piece_T::KNIGHT: 
-            return std::make_unique<Knight>(type, color, square, *this);
-        case Piece_T::BISHOP:
-            return std::make_unique<Bishop>(type, color, square, *this);
-        case Piece_T::QUEEN: 
-            return std::make_unique<Queen>(type, color, square, *this); 
-        case Piece_T::KING: {
-            return std::make_unique<King>(type, color, square, *this);
-        }
-        case Piece_T::PAWN:
-            if(color == Color_T::BLACK && row != 1){
-                std::unique_ptr<Pawn> p = std::make_unique<Pawn>(type, color, square, *this);
-                p->setHasMoved(true);
-                return p;
-            } else if (color == Color_T::WHITE && row != 6){
-                std::unique_ptr<Pawn> p = std::make_unique<Pawn>(type, color, square, *this);
-                p->setHasMoved(true);
-                return p;
-            } else {
-                return std::make_unique<Pawn>(type, color, square, *this);
-            }
-            
-        default: throw std::invalid_argument("Invalid piece type");
-    }   
-}
 
 std::unique_ptr<Piece> Board::_createPiece(char pieceChar, Color_T color, const Square& square) {
     Piece_T type = _charToPieceType(pieceChar);
@@ -1343,6 +1299,7 @@ void Board::printBoard() const {
     std::cout << this->boardToString();
 }
 
+// This is how stockfish prints their board in CLI. Credit to them for the simple yet nice design.
 std::string Board::boardToString() const {
     std::ostringstream output;
     output << "                BLACK\n\n";

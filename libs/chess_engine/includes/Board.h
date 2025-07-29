@@ -13,8 +13,31 @@
 class Board final {
     friend std::ostream& operator<<(std::ostream& output, const Board& board);
 
+    // Hypothetical board state for move simulation without modifying actual board
+    struct HypotheticalMove {
+        size_t fromRow, fromCol;
+        size_t toRow, toCol;
+        
+        HypotheticalMove(size_t fRow, size_t fCol, size_t tRow, size_t tCol);
+        bool isSquareOccupied(size_t row, size_t col, const Board& board) const;
+        const Piece* getPieceAt(size_t row, size_t col, const Board& board) const;
+        std::pair<size_t, size_t> getKingPosition(Color_T color, const Board& board) const;
+    };
+
+    struct MoveCoordsData {
+        unsigned int fromRow, fromCol;
+        unsigned int toRow, toCol;
+    };
+
+    // Struct to keep track of castling rights.
+    struct CastleRights {
+        bool whiteLong, whiteShort, blackLong, blackShort, blackCastled, whiteCastled;
+    };
+
     public:
+        enum class Castle_T : unsigned int { BLACK_SHORT, BLACK_LONG, WHITE_SHORT, WHITE_LONG }; // To determine a type of castle move.
         enum class Game_Status : unsigned int { CONTINUE, CHECKMATE_END, DRAW_END, IN_CHECK }; // Different statuses to be returned to Game for processing.
+        
         static const size_t MAX_ROWS{8};
         static const size_t MAX_COLS{8};
 
@@ -63,28 +86,7 @@ class Board final {
     private:
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS> board;
         std::array<std::array<std::unique_ptr<Piece>, MAX_COLS>, MAX_ROWS> pieces;
-        enum class Castle_T : unsigned int { BLACK_SHORT, BLACK_LONG, WHITE_SHORT, WHITE_LONG }; // To determine a type of castle move.
 
-        // Hypothetical board state for move simulation without modifying actual board
-        struct HypotheticalMove {
-            size_t fromRow, fromCol;
-            size_t toRow, toCol;
-            
-            HypotheticalMove(size_t fRow, size_t fCol, size_t tRow, size_t tCol);
-            bool isSquareOccupied(size_t row, size_t col, const Board& board) const;
-            const Piece* getPieceAt(size_t row, size_t col, const Board& board) const;
-            std::pair<size_t, size_t> getKingPosition(Color_T color, const Board& board) const;
-        };
-
-        struct MoveCoordsData {
-            unsigned int fromRow, fromCol;
-            unsigned int toRow, toCol;
-        };
-
-        // Struct to keep track of castling rights.
-        struct CastleRights {
-            bool whiteLong, whiteShort, blackLong, blackShort, blackCastled, whiteCastled;
-        };
         CastleRights m_castleRights;
         bool m_checkToResetEnPassant;
         bool m_whiteKingInCheck;
@@ -144,5 +146,4 @@ class Board final {
         Piece_T _promptForPromotion(Color_T pawnColor) const;
         Piece_T _charToPieceType(char c);
         std::unique_ptr<Piece> _createPiece(char pieceChar, Color_T color, const Square& square);
-        std::unique_ptr<Piece> _createPiece(const Piece*, Square& square) const;
 };
