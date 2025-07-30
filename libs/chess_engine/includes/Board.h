@@ -135,7 +135,7 @@ class Board final {
         bool _isValidAttackMove(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied) const;
         bool _isAttackRightMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
         bool _isAttackLeftMove(Color_T pawnColor, const MoveCoordsData& moveData) const;
-        bool _isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool direction) const;
+        bool _isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied) const;
 
         bool _checkDiagBlocked(const MoveCoordsData&, int deltaRow, int deltaCol) const;
         bool _checkRankFileBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const;
@@ -143,7 +143,7 @@ class Board final {
         bool _isValidCastleMove(const MoveCoordsData& moveData, Color_T kingColor) const;
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& getBoard();
 
-        Piece_T _promptForPromotion(Color_T pawnColor) const;
+        Piece_T _promptForPromotion() const;
         Piece_T _charToPieceType(char c);
         std::unique_ptr<Piece> _createPiece(char pieceChar, Color_T color, const Square& square);
 };

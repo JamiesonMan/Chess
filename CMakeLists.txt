@@ -18,13 +18,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-add_subdirectory(libs/chess_game)
+add_subdirectory(libs/chess_engine)
 
 add_executable(Chess
     src/Main.cpp
+    src/Game.cpp
 )
 
-target_link_libraries(Chess chess_game)
-
-# (tests are defined in chess_game)
+target_include_directories(Chess PRIVATE includes)
+target_link_libraries(Chess chess_engine)
 enable_testing()

@@ -30,8 +30,8 @@ Board::Board()
         }}) {}
 
 Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping) 
-    : m_checkToResetEnPassant{false}, m_castleRights{true, true, true, true, false, false}, m_blackKingInCheck{false}, m_whiteKingInCheck{false}
-{
+    : m_castleRights{true, true, true, true, false, false}, m_checkToResetEnPassant{false}, m_whiteKingInCheck{false}, m_blackKingInCheck{false}
+    {
     board = std::array<std::array<Square, MAX_COLS>, MAX_ROWS>();
 
     // Initialize pieces array to nullptr
@@ -484,7 +484,7 @@ Board::Game_Status Board::moveTo(Square& from, Square& to) {
             // Handle pawn promotion
             if(pawnCanPromote(to, pieces[toRow][toCol]->getColor())){
                 Color_T pawnColor = pieces[toRow][toCol]->getColor();
-                Piece_T promotionValue = _promptForPromotion(pawnColor);
+                Piece_T promotionValue = _promptForPromotion();
 
                 pieces[toRow][toCol].reset(); // Free the pawn
                 to.setOccupied(false); // Reset square occupied status
@@ -532,6 +532,9 @@ Board::Game_Status Board::moveTo(Square& from, Square& to) {
             _updateRookData(rook);
             break;
         }
+
+        default:
+            break;
     }
 
     for(size_t row = 0; row < MAX_ROWS; ++row){
@@ -679,7 +682,7 @@ bool Board::_checkDraw(Color_T currentPlayerColor) const {
     return false; // Not a draw
 }
 
-Piece_T Board::_promptForPromotion(Color_T pawnColor) const {
+Piece_T Board::_promptForPromotion() const {
     std::ostringstream error{};
     unsigned int option{0};
     while(true){
@@ -734,18 +737,14 @@ bool Board::validPawnMove(const Square& from, const Square& to, Color_T pawnColo
         return _isValidOneStepMove(pawnColor, moveData, to.isOccupied());
     }
 
-    bool attackDirectionRight = false;
-
     if(_isAttackRightMove(pawnColor, moveData)){
-        attackDirectionRight = true;
-        if(_isValidEnPassant(pawnColor, moveData, to.isOccupied(), attackDirectionRight)){
+        if(_isValidEnPassant(pawnColor, moveData, to.isOccupied())){
             return true;
         } else if (_isValidAttackMove(pawnColor, moveData, to.isOccupied())) {
             return true;
         }
     } else if (_isAttackLeftMove(pawnColor, moveData)){
-        attackDirectionRight = false;
-        if(_isValidEnPassant(pawnColor, moveData, to.isOccupied(), attackDirectionRight)){
+        if(_isValidEnPassant(pawnColor, moveData, to.isOccupied())){
             return true;
         } else if (_isValidAttackMove(pawnColor, moveData, to.isOccupied())) {
             return true;
@@ -1189,7 +1188,7 @@ bool Board::_isAttackLeftMove(Color_T pawnColor, const MoveCoordsData& moveData)
     }
 }
 
-bool Board::_isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied, bool directionRight) const {
+bool Board::_isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied) const {
     
     switch(pawnColor){
         case Color_T::BLACK: {

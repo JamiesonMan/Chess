@@ -10,10 +10,6 @@ Square::Square(Color_T squareColor, unsigned int squareRow, unsigned int squareC
             throw std::invalid_argument("Error: Row cannot be greater than 7.");
         } else if (col > 7) {
             throw std::invalid_argument("Error: Col cannot be greater than 7.");
-        } else if (row < 0) {
-            throw std::invalid_argument("Error: Row cannot be less than 0.");
-        } else if (col < 0) {
-            throw std::invalid_argument("Error: Col cannot be less than 0.");
         }
     }
 

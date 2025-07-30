@@ -3,7 +3,7 @@
 #include <sstream>
 #include <cstdlib>
 
-Game::Game() : board{}, turn{Color_T::WHITE} {};
+Game::Game() : turn{Color_T::WHITE}, board{} {};
 
 void Game::_flipTurn() {
     if(turn == Color_T::WHITE){
@@ -127,13 +127,17 @@ void Game::_loop(std::string square1, std::string square2, unsigned int fromRow,
                     break;
                 }
                     
-                case Board::Game_Status::IN_CHECK:
+                case Board::Game_Status::IN_CHECK: {
                     const Piece* p = board.getPieceAt(toRow, toCol);
                     if(p->getColor() == Color_T::BLACK){
                         error << "White is in check!" << std::endl; 
                     } else {
                         error << "Black is in check!" << std::endl; 
                     }
+                    break;
+                }
+
+                default:
                     break;
             }
         } catch(const std::exception& e){

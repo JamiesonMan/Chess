@@ -24,7 +24,6 @@ int main(){
         exit(0);
     } else if (option == 1) {
         Game game;
-
         game.start();
     }
 
