@@ -12,8 +12,7 @@ public:
 
     TestManager(const std::array<std::array<char, Board::MAX_COLS>, Board::MAX_ROWS>& boardInit);
     
-    void runTwoStepMoveTests();
-    
+    void runTwoStepMoveTest(int testPart);
 private:
     Board board;
     

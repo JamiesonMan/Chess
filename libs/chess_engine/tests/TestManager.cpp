@@ -21,28 +21,45 @@ void TestManager::printTestResult(const std::string& testName, bool result) cons
     std::cout << testName << ": " << std::boolalpha << result << std::endl;
 }
 
-void TestManager::runTwoStepMoveTests() {
+void TestManager::runTwoStepMoveTest(int testPart) {
     const Piece* whitePawn = findPawn(Color_T::WHITE);
     const Square& pawnPos = whitePawn->getSquarePosition();
-    
-    long int pawnRow = pawnPos.getRow();
-    int pawnCol = pawnPos.getCol();
-    
+    size_t pawnRow = pawnPos.getRow();
+    size_t pawnCol = pawnPos.getCol();
+
+    Square& from = board.getBoardAt(pawnRow, pawnCol);
+
     std::cout << "Pawn found at position: (" << pawnRow << ", " << pawnCol << ")" << std::endl;
     
     // Test specific two-step scenarios
     bool twoStepMove = whitePawn->isValidMove(board.getBoardAt(pawnRow - 2, pawnCol));
     bool threeStepMove = whitePawn->isValidMove(board.getBoardAt(pawnRow - 3, pawnCol));
-    bool diagonalMove = whitePawn->isValidMove(board.getBoardAt(pawnRow - 2, pawnCol + 1));
+    bool diagonalRight = whitePawn->isValidMove(board.getBoardAt(pawnRow - 2, pawnCol + 1));
+    bool diagonalLeft = whitePawn->isValidMove(board.getBoardAt(pawnRow - 2, pawnCol - 1));
     
     printTestResult("Two-step move valid", twoStepMove);
     printTestResult("Three-step move valid", threeStepMove);
-    printTestResult("Diagonal move valid", diagonalMove);
-    
-    // Validate test results
-    if(!twoStepMove || threeStepMove || diagonalMove) {
-        throw std::runtime_error("Two-step move tests failed");
+    printTestResult("Diagonal right move valid", diagonalRight);
+    printTestResult("Diagonal left move valid", diagonalLeft);
+
+    switch(testPart){
+        case 1:
+            // Validate test results
+            if(!twoStepMove || threeStepMove || diagonalRight || diagonalLeft) {
+                throw std::runtime_error("Two-step move test 1 failed!");
+            }
+            break;
+        case 2:
+            if(twoStepMove || threeStepMove || diagonalRight || diagonalLeft){
+                throw std::runtime_error("Two-step move test 2 failed!");
+            }
+            break;
+        case 3:
+            if(twoStepMove || threeStepMove || diagonalRight || diagonalLeft){
+                throw std::runtime_error("Two-step move test 2 failed!");
+            }
+            break;
     }
     
-    std::cout << "All two-step move tests passed!" << std::endl;
+    std::cout << "Test for TwoStepPawnMove: Part " << testPart << " Passed!\n" << std::endl;
 }

@@ -32,4 +32,4 @@ add_executable(TwoStepPawnMove
 target_link_libraries(TwoStepPawnMove chess_engine)
 
 enable_testing()
-add_test(NAME TwoStepPawnMove COMMAND TwoStepPawnMove)
+add_test(NAME PawnTest COMMAND TwoStepPawnMove)
