@@ -1,4 +1,5 @@
 #include "Piece.h"
+#include "chess_engine/ColorUtil.h"
 #include <stdexcept>
 #include <sstream>
 

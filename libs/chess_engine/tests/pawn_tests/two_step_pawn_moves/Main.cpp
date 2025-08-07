@@ -4,7 +4,7 @@
 int main(){
     // Test case: White pawn initial two-step move
     int testCode{1};
-    const std::array<std::array<char, TestManager::MAX_COLS>, TestManager::MAX_ROWS> twoStepInit_01 = {{
+    const std::array<std::array<char, MAX_COLS>, MAX_ROWS> twoStepInit_01 = {{
         {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
         {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
         {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
@@ -24,7 +24,7 @@ int main(){
 
     // Test case: White pawn 2 step move with a piece blocking. Should be an invalid move.
     ++testCode;
-    const std::array<std::array<char, TestManager::MAX_COLS>, TestManager::MAX_ROWS> twoStepInit_02 = {{
+    const std::array<std::array<char, MAX_COLS>, MAX_ROWS> twoStepInit_02 = {{
         {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
         {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
         {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
@@ -44,7 +44,7 @@ int main(){
 
     // Test case: White pawn 2 step move with a piece blocking. Should be an invalid move.
     ++testCode;
-    const std::array<std::array<char, TestManager::MAX_COLS>, TestManager::MAX_ROWS> twoStepInit_03 = {{
+    const std::array<std::array<char, MAX_COLS>, MAX_ROWS> twoStepInit_03 = {{
         {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
         {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
         {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},

@@ -1,4 +1,5 @@
 #pragma once
+#include "chess_engine/Types.h"
 #include "Square.h"
 #include "King.h"
 #include "Piece.h"
@@ -9,6 +10,7 @@
 #include <memory>
 #include <sstream>
 #include "Rook.h"
+#include "../include/chess_engine/FENString.h"
 
 class Board final {
     friend std::ostream& operator<<(std::ostream& output, const Board& board);
@@ -24,11 +26,6 @@ class Board final {
         std::pair<size_t, size_t> getKingPosition(Color_T color, const Board& board) const;
     };
 
-    struct MoveCoordsData {
-        unsigned int fromRow, fromCol;
-        unsigned int toRow, toCol;
-    };
-
     // Struct to keep track of castling rights.
     struct CastleRights {
         bool whiteLong, whiteShort, blackLong, blackShort, blackCastled, whiteCastled;
@@ -36,12 +33,10 @@ class Board final {
 
     public:
         enum class Castle_T : unsigned int { BLACK_SHORT, BLACK_LONG, WHITE_SHORT, WHITE_LONG }; // To determine a type of castle move.
-        enum class Game_Status : unsigned int { CONTINUE, CHECKMATE_END, DRAW_END, IN_CHECK }; // Different statuses to be returned to Game for processing.
         
-        static const size_t MAX_ROWS{8};
-        static const size_t MAX_COLS{8};
 
         Board(); // Eventually include option to start at a position, FEN.
+        Board(const FENString& fen);
         Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping);
 
         const std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& getBoard() const;
@@ -75,7 +70,7 @@ class Board final {
         bool pawnCanPromote(const Square& to, Color_T color) const;
 
         // if a move is legal returns true, else false.
-        bool isLegalMove(const Square& from, const Square& to, const std::unique_ptr<Piece>& movingPiece) const;
+        bool isLegalMove(const Square& from, const Square& to, const Piece* movingPiece) const;
 
         // Updates board and pieces.
         Game_Status moveTo(Square& from, Square& to);

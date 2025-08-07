@@ -1,5 +1,5 @@
 #pragma once
-#include "Colors.h"
+#include "chess_engine/Types.h"
 #include <ostream>
 
 // Maps itself as row: [0-7] and col: [0-7]

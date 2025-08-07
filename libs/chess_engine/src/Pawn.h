@@ -1,7 +1,6 @@
 #pragma once
 #include "Piece.h"
 #include "Square.h"
-#include "Colors.h"
 #include <string>
 
 class Pawn final : public Piece {

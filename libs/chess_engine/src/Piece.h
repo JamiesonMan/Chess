@@ -1,13 +1,11 @@
 #pragma once
+#include "chess_engine/Types.h"
 #include "Square.h" // reference this piece's position.
-#include "Colors.h" // Color_T - White and Black.
 #include <string>
 #include <memory>
 #include <vector>
 
 class Board;
-
-enum class Piece_T : unsigned int { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING}; // values correspond to the numeric value of that piece, KING is invaluable.
 
 // abstract class - not an initializable object.
 class Piece {

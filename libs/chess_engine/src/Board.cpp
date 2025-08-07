@@ -1,5 +1,4 @@
 #include "Board.h"
-#include "Colors.h"
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -18,7 +17,6 @@
 
 Board::Board() 
     : Board({{ 
-
             {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'},
             {'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'},
             {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
@@ -28,6 +26,92 @@ Board::Board()
             {'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
             {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
         }}) {}
+
+Board::Board(const FENString& fen){ 
+    std::string boardStr = fen.getBoardStr();
+    size_t row{0};
+    size_t col{0};
+    
+    // Initialize board to empty
+    std::array<std::array<char, MAX_COLS>, MAX_ROWS> boardToConstruct;
+    for(size_t i = 0; i < MAX_ROWS; ++i) {
+        for(size_t j = 0; j < MAX_COLS; ++j) {
+            boardToConstruct[i][j] = ' ';
+        }
+    }
+    
+    for(char p : boardStr){
+        if(p != fen.getPosDelim()){
+            if(!std::isdigit(p)){
+                if(col < MAX_COLS) {
+                    boardToConstruct[row][col] = p;  // Don't change case - FEN is correct
+                    ++col;
+                }
+            } else {
+                size_t spaces = p - '0';
+                for(size_t i = 0; i < spaces && col < MAX_COLS; ++i) {
+                    boardToConstruct[row][col] = ' ';
+                    ++col;
+                }
+            }
+        } else {
+            ++row;
+            col = 0;  // Reset column for new rank
+        }
+    }
+    
+    // Now populate the actual board using the constructed array
+    // Initialize member variables like the array constructor does
+    m_castleRights = {true, true, true, true, false, false};
+    m_checkToResetEnPassant = false;
+    m_whiteKingInCheck = false;
+    m_blackKingInCheck = false;
+    
+    board = std::array<std::array<Square, MAX_COLS>, MAX_ROWS>();
+
+    // Initialize pieces array to nullptr
+    for(size_t row = 0; row < MAX_ROWS; ++row) {
+        for(size_t col = 0; col < MAX_COLS; ++col) {
+            pieces[row][col] = nullptr;
+        }
+    }
+
+    // Single loop for both squares and pieces
+    for(size_t row = 0; row < MAX_ROWS; ++row) {
+        for(size_t col = 0; col < MAX_COLS; ++col) {
+            // Create board.
+            Color_T squareColor = ((row + col) % 2 == 0) ? Color_T::WHITE : Color_T::BLACK;
+            board[row][col] = Square{squareColor, static_cast<unsigned int>(row), static_cast<unsigned int>(col)};
+            
+            // Populate Pieces.
+            char pieceChar = boardToConstruct[row][col];
+            if(pieceChar != ' ') {
+                Color_T pieceColor = std::isupper(pieceChar) ? Color_T::WHITE : Color_T::BLACK;
+                pieces[row][col] = _createPiece(pieceChar, pieceColor, board[row][col]);
+                getBoardAt(row, col).setOccupied(true);
+            }
+        }
+    }
+
+    // Populate each pieces attacking std::vector<const Square*>.
+    for(size_t row = 0; row < MAX_ROWS; ++row) {
+        for(size_t col = 0; col < MAX_COLS; ++col) {
+            Piece* p = pieces[row][col].get();
+            if(!p){continue;}
+            for(size_t rowJ = 0; rowJ < MAX_ROWS; ++rowJ) {
+                for(size_t colJ = 0; colJ < MAX_COLS; ++colJ) {
+                    const Square& to = getBoardAt(rowJ, colJ);
+                    if(to.isOccupied()){
+                        const Piece* attackedPiece = pieces[rowJ][colJ].get();
+                        if(p->isValidMove(to)){ 
+                            p->addToAttacking(attackedPiece); // Add this piece to the vector of attacked pieces for this piece.
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping) 
     : m_castleRights{true, true, true, true, false, false}, m_checkToResetEnPassant{false}, m_whiteKingInCheck{false}, m_blackKingInCheck{false}
@@ -98,11 +182,11 @@ const Square& Board::getBoardAt(size_t row, size_t col) const {
 bool Board::getCheckToResetEnPassant() const{ return m_checkToResetEnPassant; }
 void Board::setCheckToResetEnPassant(bool val) { m_checkToResetEnPassant = val; }
 
-const std::array<std::array<Square, Board::MAX_COLS>, Board::MAX_ROWS>& Board::getBoard() const {
+const std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& Board::getBoard() const {
     return board;
 }
 
-std::array<std::array<Square, Board::MAX_COLS>, Board::MAX_ROWS>& Board::getBoard() {
+std::array<std::array<Square, MAX_COLS>, MAX_ROWS>& Board::getBoard() {
     return board;
 }
 
@@ -342,7 +426,7 @@ bool Board::HypotheticalMoveValidator::isPathClear(size_t fromRow, size_t fromCo
     return true; // Path is clear
 }
 
-bool Board::isLegalMove(const Square& from, const Square& to, const std::unique_ptr<Piece>& movingPiece) const {
+bool Board::isLegalMove(const Square& from, const Square& to, const Piece* movingPiece) const {
     if(!movingPiece) {
         throw std::invalid_argument("Error: No piece at source square.");
     } 
@@ -366,7 +450,7 @@ bool Board::isLegalMove(const Square& from, const Square& to, const std::unique_
 }
 
 // Actual move execution
-Board::Game_Status Board::moveTo(Square& from, Square& to) {
+Game_Status Board::moveTo(Square& from, Square& to) {
     size_t fromRow = from.getRow();
     size_t fromCol = from.getCol();
     size_t toRow = to.getRow();
@@ -374,8 +458,8 @@ Board::Game_Status Board::moveTo(Square& from, Square& to) {
 
     // Get the piece to move
     std::unique_ptr<Piece>& movingPiece = pieces[fromRow][fromCol];
-    
-    bool legalMoveResult = isLegalMove(from, to, movingPiece);
+    const Piece* movingPieceCheck = pieces[fromRow][fromCol].get();
+    bool legalMoveResult = isLegalMove(from, to, movingPieceCheck);
 
     if(!legalMoveResult) {
         throw std::invalid_argument("Error: Must supply a legal move.");

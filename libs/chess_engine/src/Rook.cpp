@@ -5,7 +5,7 @@ Rook::Rook(Piece_T pieceType, Color_T pieceColor, const Square& pieceSquareRef, 
     : Piece(pieceType, pieceColor, pieceSquareRef, pieceBoardRef) {
         setHasMoved(false);
         
-        if(pieceSquareRef.getCol() == Board::MAX_COLS - 1) { // If its a short sided rook
+        if(pieceSquareRef.getCol() == MAX_COLS - 1) { // If its a short sided rook
             setRookShort(true);
             setRookLong(false);
         } else { // If its a long sided rook
@@ -21,8 +21,8 @@ void Rook::setHasMoved(bool newHasMoved){
 
 void Rook::updateAttacking() {
     _clearAttacking();
-    for(size_t row = 0; row < Board::MAX_ROWS; ++row) {
-        for(size_t col = 0; col < Board::MAX_COLS; ++col) {
+    for(size_t row = 0; row < MAX_ROWS; ++row) {
+        for(size_t col = 0; col < MAX_COLS; ++col) {
             const Square& to = getBoard().getBoardAt(row, col);
             if(to.isOccupied()){
                 const Piece* attackedPiece = getBoard().getPieceAt(row, col);

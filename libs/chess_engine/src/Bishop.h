@@ -1,7 +1,6 @@
 #pragma once
 #include "Piece.h"
 #include "Square.h"
-#include "Colors.h"
 
 class Bishop final : public Piece {
 

@@ -2,12 +2,12 @@
 #include <iostream>
 #include <stdexcept>
 
-TestManager::TestManager(const std::array<std::array<char, Board::MAX_COLS>, Board::MAX_ROWS>& boardInit)
+TestManager::TestManager(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& boardInit)
     : board(boardInit) {}
 
 const Piece* TestManager::findPawn(Color_T color) const {
-    for(size_t row = 0; row < Board::MAX_ROWS; row++){
-        for(size_t col = 0; col < Board::MAX_COLS; col++){
+    for(size_t row = 0; row < MAX_ROWS; row++){
+        for(size_t col = 0; col < MAX_COLS; col++){
             const Piece* piece = board.getPieceAt(row, col);
             if(piece && piece->getType() == Piece_T::PAWN && piece->getColor() == color){
                 return piece;
@@ -26,8 +26,6 @@ void TestManager::runTwoStepMoveTest(int testPart) {
     const Square& pawnPos = whitePawn->getSquarePosition();
     size_t pawnRow = pawnPos.getRow();
     size_t pawnCol = pawnPos.getCol();
-
-    Square& from = board.getBoardAt(pawnRow, pawnCol);
 
     std::cout << "Pawn found at position: (" << pawnRow << ", " << pawnCol << ")" << std::endl;
     

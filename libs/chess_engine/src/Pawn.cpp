@@ -1,4 +1,5 @@
 #include "Pawn.h"
+#include "chess_engine/ColorUtil.h"
 #include "Board.h" // To verify pawn moves need to know board state
 #include <string>
 #include <sstream>
@@ -27,8 +28,8 @@ bool Pawn::isValidMove(const Square& toSquare) const {
 
 void Pawn::updateAttacking() {
     _clearAttacking();
-    for(size_t row = 0; row < Board::MAX_ROWS; ++row) {
-        for(size_t col = 0; col < Board::MAX_COLS; ++col) {
+    for(size_t row = 0; row < MAX_ROWS; ++row) {
+        for(size_t col = 0; col < MAX_COLS; ++col) {
             const Square& to = getBoard().getBoardAt(row, col);
             if(to.isOccupied()){
                 if(isValidMove(to)){

@@ -15,16 +15,17 @@ else()
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/libs)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/libs)
 
 add_subdirectory(libs/chess_engine)
 
 add_executable(Chess
     src/Main.cpp
     src/Game.cpp
+    src/DBoard.cpp
 )
 
-target_include_directories(Chess PRIVATE includes)
-target_link_libraries(Chess chess_engine)
+target_include_directories(Chess PRIVATE src)
+target_link_libraries(Chess PRIVATE chess_engine)
 enable_testing()
