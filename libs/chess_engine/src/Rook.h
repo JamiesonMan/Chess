@@ -23,5 +23,4 @@ class Rook final : public Piece {
         bool hasMoved;
         bool rookShort;
         bool rookLong;
-
 };

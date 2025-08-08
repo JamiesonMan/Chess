@@ -6,7 +6,18 @@ DBoard::DBoard() : DBoard(FEN_STARTING_POS){}
 
 //"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 DBoard::DBoard(const FENString& fen) {
-    std::string fenBoard = fen.getBoardStr();
+    updateBoard(fen.getBoardStr());
+}
+
+DPiece_T DBoard::getBoardAt(size_t row, size_t col) const {
+    if(row >= MAX_ROWS || col >= MAX_COLS){
+        throw std::invalid_argument("Error: Invalid row/col argument.");
+    } else {
+        return m_dboard[row][col];
+    }
+}
+
+void DBoard::updateBoard(const std::string& fenBoard) {
     size_t row{0};
     size_t col{0};
     
@@ -76,25 +87,11 @@ DBoard::DBoard(const FENString& fen) {
             default:
                 if(std::isdigit(p)){
                     size_t num = p - '0';
-                    col += num; // Skip empty squares
+                    col += num; 
                 }
                 break;
         }
     }
-}
-
-DPiece_T DBoard::getBoardAt(size_t row, size_t col) const {
-    if(row >= MAX_ROWS || col >= MAX_COLS){
-        throw std::invalid_argument("Error: Invalid row/col argument.");
-    } else {
-        return m_dboard[row][col];
-    }
-}
-
-// Prevalidated by engine.
-void DBoard::moveTo(MoveCoordsData move) {
-    m_dboard[move.toRow][move.toCol] = m_dboard[move.fromRow][move.fromCol];
-    m_dboard[move.fromRow][move.fromCol] = DPiece_T::NULL_PIECE;
 }
 
 std::string DBoard::dboardToString() const {

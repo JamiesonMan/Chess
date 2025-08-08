@@ -11,6 +11,7 @@ class Game {
         Game();
         Game(const FENString& fen);
         void start();
+        void test();
 
     private:
         FENString m_currentFEN;
@@ -29,5 +30,5 @@ class Game {
         // FEN management
         const FENString& getCurrentFEN() const;
         void setCurrentFEN(const FENString& fen);
-        void updateFENAfterMove(const MoveCoordsData& move);
+        void updateFENAfterMove(const std::string& newFen);
 };

@@ -10,7 +10,7 @@
 #include <memory>
 #include <sstream>
 #include "Rook.h"
-#include "../include/chess_engine/FENString.h"
+#include "chess_engine/FENString.h"
 
 class Board final {
     friend std::ostream& operator<<(std::ostream& output, const Board& board);
@@ -28,7 +28,7 @@ class Board final {
 
     // Struct to keep track of castling rights.
     struct CastleRights {
-        bool whiteLong, whiteShort, blackLong, blackShort, blackCastled, whiteCastled;
+        bool whiteLong, whiteShort, blackLong, blackShort;
     };
 
     public:
@@ -55,6 +55,8 @@ class Board final {
         bool getCheckToResetEnPassant() const;
         void setCheckToResetEnPassant(bool val);
 
+        std::string getFenStr() const;
+
         void printBoard() const;
         std::string boardToString() const;
 
@@ -65,6 +67,16 @@ class Board final {
         bool validRookMove(const Square& from, const Square& to, Color_T rookColor) const;
         bool validQueenMove(const Square& from, const Square& to, Color_T queenColor) const;
         bool validKingMove(const Square& from, const Square& to, Color_T kingColor) const;
+
+        /*// Hypothetical-aware validation functions for use in king safety checks
+        bool validPawnMove(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved, const HypotheticalMove* hypothetical) const;
+        bool validBishopMove(const Square& from, const Square& to, Color_T bishopColor, const HypotheticalMove* hypothetical) const;
+        bool validKnightMove(const Square& from, const Square& to, Color_T knightColor, const HypotheticalMove* hypothetical) const;
+        bool validRookMove(const Square& from, const Square& to, Color_T rookColor, const HypotheticalMove* hypothetical) const;
+        bool validQueenMove(const Square& from, const Square& to, Color_T queenColor, const HypotheticalMove* hypothetical) const;
+        bool validKingMove(const Square& from, const Square& to, Color_T kingColor, const HypotheticalMove* hypothetical) const;
+        */
+        
 
 
         bool pawnCanPromote(const Square& to, Color_T color) const;
@@ -77,19 +89,30 @@ class Board final {
 
         // Convert chess notation (e.g. "E4") to row/col coordinates
         void notationToCoords(const std::string& notation, unsigned int& row, unsigned int& col) const;
+        std::string coordsToNotation(size_t& row, size_t& col) const;
 
     private:
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS> board;
         std::array<std::array<std::unique_ptr<Piece>, MAX_COLS>, MAX_ROWS> pieces;
 
+        const Piece* m_lastPieceMoved;
         CastleRights m_castleRights;
+        FENString m_fen;
         bool m_checkToResetEnPassant;
         bool m_whiteKingInCheck;
         bool m_blackKingInCheck;
 
+        size_t m_totalMoves;
+        size_t m_totalHalfMoves;
+
         const King* m_whiteKing;
         const King* m_blackKing;
         
+        void _updateFen();
+
+        void _initCastleRights(std::string fenCastleRights);
+        void _initEnPassantCheck(std::string fenEnPassantStr);
+
         void _setBlackKingInCheck(bool);
         void _setWhiteKingInCheck(bool);
         

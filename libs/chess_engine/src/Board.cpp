@@ -27,7 +27,7 @@ Board::Board()
             {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}
         }}) {}
 
-Board::Board(const FENString& fen){ 
+Board::Board(const FENString& fen) : m_lastPieceMoved{nullptr}, m_fen{fen.getFen()}{ 
     std::string boardStr = fen.getBoardStr();
     size_t row{0};
     size_t col{0};
@@ -44,29 +44,36 @@ Board::Board(const FENString& fen){
         if(p != fen.getPosDelim()){
             if(!std::isdigit(p)){
                 if(col < MAX_COLS) {
-                    boardToConstruct[row][col] = p;  // Don't change case - FEN is correct
+                    boardToConstruct[row][col] = p; 
                     ++col;
                 }
             } else {
                 size_t spaces = p - '0';
                 for(size_t i = 0; i < spaces && col < MAX_COLS; ++i) {
-                    boardToConstruct[row][col] = ' ';
                     ++col;
                 }
             }
         } else {
             ++row;
-            col = 0;  // Reset column for new rank
+            col = 0;
         }
     }
     
-    // Now populate the actual board using the constructed array
-    // Initialize member variables like the array constructor does
-    m_castleRights = {true, true, true, true, false, false};
-    m_checkToResetEnPassant = false;
+    // -------------------1----------------------- 2 --3- 4 5 6
+    // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+    std::string fenCastleRightsStr = fen.getCastlingRightsStr();
+    _initCastleRights(fenCastleRightsStr);
+
+    std::string fenEnPassantStr = fen.getEnPassantTarget();
+    _initEnPassantCheck(fenEnPassantStr);
     m_whiteKingInCheck = false;
     m_blackKingInCheck = false;
     
+    m_totalHalfMoves = fen.getHalfMoveClock();
+
+    m_totalMoves = fen.getTotalMoves();
+
+
     board = std::array<std::array<Square, MAX_COLS>, MAX_ROWS>();
 
     // Initialize pieces array to nullptr
@@ -93,6 +100,37 @@ Board::Board(const FENString& fen){
         }
     }
 
+    if(m_fen.getEnPassantTarget() != "-"){
+        unsigned int row{0};
+        unsigned int col{0};
+
+        notationToCoords(m_fen.getEnPassantTarget(), row, col);
+
+        if(row <= MAX_ROWS / 2){ // White pawn
+            Piece* p = pieces[row + 1][col].get();
+            if(p){
+                if(p->getType() == Piece_T::PAWN){
+                    Pawn* pawn = dynamic_cast<Pawn*>(p);
+                    pawn->setHasMoved(true);
+                    pawn->setEnPassantCaptureStatus(true);
+                }
+            } else {
+                throw std::invalid_argument("Error: Bad Conversion");
+            }
+        } else {
+            Piece* p = pieces[row - 1][col].get();
+            if(p){
+                if(p->getType() == Piece_T::PAWN){
+                    Pawn* pawn = dynamic_cast<Pawn*>(p);
+                    pawn->setHasMoved(true);
+                    pawn->setEnPassantCaptureStatus(true);
+                }
+            } else {
+                throw std::invalid_argument("Error: Bad Conversion");
+            }
+        }
+    }
+
     // Populate each pieces attacking std::vector<const Square*>.
     for(size_t row = 0; row < MAX_ROWS; ++row) {
         for(size_t col = 0; col < MAX_COLS; ++col) {
@@ -103,7 +141,17 @@ Board::Board(const FENString& fen){
                     const Square& to = getBoardAt(rowJ, colJ);
                     if(to.isOccupied()){
                         const Piece* attackedPiece = pieces[rowJ][colJ].get();
-                        if(p->isValidMove(to)){ 
+                        if(p->isValidMove(to)){
+                            if(attackedPiece->getType() == Piece_T::KING){
+                                switch(attackedPiece->getColor()){
+                                    case Color_T::BLACK:
+                                        m_blackKingInCheck = true;
+                                        break;
+                                    case Color_T::WHITE:
+                                        m_whiteKingInCheck = true;
+                                        break;
+                                }
+                            }
                             p->addToAttacking(attackedPiece); // Add this piece to the vector of attacked pieces for this piece.
                         }
                     }
@@ -113,8 +161,41 @@ Board::Board(const FENString& fen){
     }
 }
 
+void Board::_initEnPassantCheck(std::string fenEnPassantStr) {
+    if(fenEnPassantStr != "-"){
+        m_checkToResetEnPassant = true;
+    } else {
+        m_checkToResetEnPassant = false;
+    }
+}
+
+void Board::_initCastleRights(std::string fenCastleRights) {
+    
+    for(char castleChar : fenCastleRights){
+        if(castleChar == '-') {
+            // White long, white short, black long, black short
+            m_castleRights = {false, false, false, false};
+            break;
+        } else if (castleChar == 'K'){
+            m_castleRights.whiteShort = true;
+        } else if (castleChar == 'Q'){
+            m_castleRights.whiteLong = true;
+        } else if (castleChar == 'k'){
+            m_castleRights.blackShort = true;
+        } else if (castleChar == 'q'){
+            m_castleRights.blackLong = true;
+        } else if (castleChar == '\0'){
+            continue;
+        } else {
+            throw std::invalid_argument("Error: Invalid FEN Castle structure.");
+        }
+    }
+}
+
 Board::Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping) 
-    : m_castleRights{true, true, true, true, false, false}, m_checkToResetEnPassant{false}, m_whiteKingInCheck{false}, m_blackKingInCheck{false}
+    : m_lastPieceMoved{nullptr}, m_castleRights{true, true, true, true}, m_fen{FEN_STARTING_POS.getFen()},
+      m_checkToResetEnPassant{false}, m_whiteKingInCheck{false}, m_blackKingInCheck{false}, m_totalMoves{1},
+      m_totalHalfMoves{0}
     {
     board = std::array<std::array<Square, MAX_COLS>, MAX_ROWS>();
 
@@ -427,9 +508,16 @@ bool Board::HypotheticalMoveValidator::isPathClear(size_t fromRow, size_t fromCo
 }
 
 bool Board::isLegalMove(const Square& from, const Square& to, const Piece* movingPiece) const {
-    if(!movingPiece) {
+     if(!movingPiece) {
         throw std::invalid_argument("Error: No piece at source square.");
     } 
+    
+    // Check if it's the correct player's turn
+    char activeTurn = m_fen.getActiveTurn();
+    Color_T activeColor = (activeTurn == 'w') ? Color_T::WHITE : Color_T::BLACK;
+    if(movingPiece->getColor() != activeColor) {
+        throw std::invalid_argument("Error: It's not that player's turn!");
+    }
     
     if(!movingPiece->isValidMove(to)){
         throw std::invalid_argument("Invalid Move!");
@@ -465,9 +553,8 @@ Game_Status Board::moveTo(Square& from, Square& to) {
         throw std::invalid_argument("Error: Must supply a legal move.");
     }
 
-    // Check for castle move, move the rook
     // Check for en passant capture
-    bool isEnPassant = false;
+    bool isEnPassant{false};
     if(movingPiece->getType() == Piece_T::PAWN) {
         // Check if this is a diagonal move to an empty square (potential en passant)
         bool isAttackMove = (fromCol != toCol);
@@ -501,16 +588,20 @@ Game_Status Board::moveTo(Square& from, Square& to) {
             case Color_T::BLACK:
                 if(deltaCol == 2 && deltaRow == 0) { // Move is a valid black king castle short move.
                     _castleRookMove(Castle_T::BLACK_SHORT);
+                    king->setCanCastleShort(false);
                 } else if (deltaCol == -2 && deltaRow == 0){ // Move is a valid black king castle long move.
                     _castleRookMove(Castle_T::BLACK_LONG);
+                    king->setCanCastleLong(false);
                 }
                 break;
             
             case Color_T::WHITE:
                 if(deltaCol == 2 && deltaRow == 0) { // Move is a valid white king castle short move.
                     _castleRookMove(Castle_T::WHITE_SHORT);
+                    king->setCanCastleShort(false);
                 } else if (deltaCol == -2 && deltaRow == 0){ // Move is a white king castle long move.
                     _castleRookMove(Castle_T::WHITE_LONG);
+                    king->setCanCastleLong(false);
                 }
                 break;
         }
@@ -521,6 +612,10 @@ Game_Status Board::moveTo(Square& from, Square& to) {
     if(targetPiece && !isEnPassant) {
         // Normal capture: remove the target piece
         targetPiece.reset(); // This deletes the captured piece
+    } else if (!targetPiece && movingPiece->getType() != Piece_T::PAWN){
+        ++m_totalHalfMoves;
+    } else {
+        m_totalHalfMoves = 0;
     }
 
     // Move the piece
@@ -598,6 +693,8 @@ Game_Status Board::moveTo(Square& from, Square& to) {
 
             if(king->getHasMoved() == false){
                 king->setHasMoved(true);
+                king->setCanCastleLong(false);
+                king->setCanCastleShort(false);
             }
 
             if(king->getColor() == Color_T::BLACK) {
@@ -605,7 +702,7 @@ Game_Status Board::moveTo(Square& from, Square& to) {
                 m_castleRights.blackShort = false;
             } else {
                 m_castleRights.whiteLong = false;
-                m_castleRights.blackLong = false;
+                m_castleRights.whiteShort = false;
             }
 
             break;
@@ -630,6 +727,11 @@ Game_Status Board::moveTo(Square& from, Square& to) {
     }
 
     Piece* p = pieces[toRow][toCol].get();
+    m_lastPieceMoved = p; // Update this.
+
+    ++m_totalMoves;
+    // Update the fen with new position.
+    _updateFen();
 
     if(_checkCheckmate()) {
         return Game_Status::CHECKMATE_END;
@@ -651,6 +753,124 @@ Game_Status Board::moveTo(Square& from, Square& to) {
     _setWhiteKingInCheck(false);
 
     return Game_Status::CONTINUE;
+}
+
+// Update the m_fen based on the new board states and positions.
+void Board::_updateFen() {
+    // Reconstruct FEN string from current DBoard state
+    std::string boardString = "";
+    
+    for(size_t row = 0; row < MAX_ROWS; ++row) {
+        size_t emptySquares = 0;
+        
+        for(size_t col = 0; col < MAX_COLS; ++col) {
+            const Piece* piece = pieces[row][col].get();
+            
+            if(!piece) {
+                ++emptySquares;
+            } else {
+                // Add any accumulated empty squares
+                if(emptySquares > 0) {
+                    boardString += std::to_string(emptySquares);
+                    emptySquares = 0;
+                }
+                
+                // Add piece character
+                switch(piece->getColor()) {
+                    case Color_T::BLACK:
+                        switch(piece->getType()){
+                            case Piece_T::PAWN:   boardString += 'p'; break;
+                            case Piece_T::ROOK:   boardString += 'r'; break;
+                            case Piece_T::KNIGHT: boardString += 'n'; break;
+                            case Piece_T::BISHOP: boardString += 'b'; break;
+                            case Piece_T::QUEEN:  boardString += 'q'; break;
+                            case Piece_T::KING:   boardString += 'k'; break;
+                        }
+                        break;
+                    case Color_T::WHITE:
+                        switch(piece->getType()){
+                            case Piece_T::PAWN:   boardString += 'P'; break;
+                            case Piece_T::ROOK:   boardString += 'R'; break;
+                            case Piece_T::KNIGHT: boardString += 'N'; break;
+                            case Piece_T::BISHOP: boardString += 'B'; break;
+                            case Piece_T::QUEEN:  boardString += 'Q'; break;
+                            case Piece_T::KING:   boardString += 'K'; break;
+                        }
+                        break;
+                }
+            }
+        }
+        
+        if(emptySquares > 0) {
+            boardString += std::to_string(emptySquares);
+        }
+        
+        if(row < MAX_ROWS - 1) {
+            boardString += '/';
+        }
+    }
+    
+    char activeColor{'w'};
+    if(m_lastPieceMoved){
+        activeColor = (m_lastPieceMoved->getColor() == Color_T::WHITE) ? 'b' : 'w';
+    } else {
+        // If no piece has been moved yet, use the active turn from the current FEN
+        activeColor = m_fen.getActiveTurn();
+    }
+    
+    
+    std::string castlingRights;
+    if(m_whiteKing->getCanCastleShort() && m_castleRights.whiteShort){castlingRights += 'K';}
+    if(m_whiteKing->getCanCastleLong() && m_castleRights.whiteLong){castlingRights += 'Q';}
+    if(m_blackKing->getCanCastleShort() && m_castleRights.blackShort){ castlingRights += 'k';}
+    if(m_blackKing->getCanCastleLong() && m_castleRights.blackLong){castlingRights += 'q';}
+
+    if(castlingRights.length() == 0){castlingRights = "-";}
+
+    std::string enPassantTarget;
+    if(!m_checkToResetEnPassant){
+        enPassantTarget = "-";
+    } else {
+        size_t targetPawnFenRow{0};
+        size_t targetPawnFenCol{0};
+        if(m_lastPieceMoved){
+            const Square& squareOfPawn = m_lastPieceMoved->getSquarePosition();
+            if(m_lastPieceMoved->getColor() == Color_T::WHITE){
+                targetPawnFenRow = squareOfPawn.getRow() + 1;
+                targetPawnFenCol = squareOfPawn.getCol();
+
+            } else {
+                targetPawnFenRow = squareOfPawn.getRow() - 1;
+                targetPawnFenCol = squareOfPawn.getCol();
+            }
+        }
+        enPassantTarget = coordsToNotation(targetPawnFenRow, targetPawnFenCol);
+    }
+    
+    std::string halfmoveClock = std::to_string(m_totalHalfMoves);
+    
+    std::string fullmoveNumber = std::to_string(m_totalMoves);
+    
+    // Construct complete FEN string
+    std::string newFENString = boardString + " " + activeColor + " " + 
+                              castlingRights + " " + enPassantTarget + " " + 
+                              halfmoveClock + " " + fullmoveNumber;
+    
+    // Update current FEN
+    m_fen = FENString{newFENString};
+}
+
+std::string Board::getFenStr() const {
+    return m_fen.getFen();
+}
+
+// e.g. row = 7, col = 7; notation = "H1"
+std::string Board::coordsToNotation(size_t& row, size_t& col) const {
+    char rank = '8' - row; // Number
+    char file = 'a' + col; // Letter
+
+    std::string notation{file, rank};
+    return notation;
 }
 
 void Board::_setBlackKingInCheck(bool newVal) {m_blackKingInCheck = newVal;}
@@ -925,9 +1145,15 @@ bool Board::validQueenMove(const Square& from, const Square& to, Color_T queenCo
     if(p){
         if(p->getColor() == queenColor){ return false; } // Cant take a friendly piece.
     }
-
-    if(_checkRankFileBlocked(moveData, deltaRow, deltaCol) && _checkDiagBlocked(moveData, deltaRow, deltaCol)){ return false; } // Something was in between.
-     
+    if(deltaRow == 0 || deltaCol == 0){
+        if(_checkRankFileBlocked(moveData, deltaRow, deltaCol)){
+            return false;
+        }
+    } else {
+        if(_checkDiagBlocked(moveData, deltaRow, deltaCol)){ 
+            return false; // Something was in between.
+        } 
+    }
     return true;
 }
 
@@ -970,27 +1196,48 @@ bool Board::_isValidCastleMove(const MoveCoordsData& moveData, Color_T kingColor
             return false;
         }
 
+        // Helper function to check if king would be in check at a specific square
+        auto wouldKingBeInCheckAt = [this, &moveData, kingColor](size_t row, size_t col) -> bool {
+            Square from = getBoardAt(moveData.fromRow, moveData.fromCol);
+            Square to = getBoardAt(row, col);
+            return _wouldLeaveKingInCheck(from, to, kingColor);
+        };
+
         switch(kingColor){
             case Color_T::BLACK: {
                 if(moveData.toCol == MAX_COLS - 2 && moveData.toRow == 0){ // Black castling short
+                    if(!king->getCanCastleShort()){
+                        return false;
+                    }
                     const Piece* p = getPieceAt(0, MAX_COLS - 1); // Possible rook?
                     if(p){ // If there is a piece
                         if(p->getType() == Piece_T::ROOK){ // If that piece is a rook
                             const Rook* rook = dynamic_cast<const Rook*>(p); // Safely cast to a Rook*
                             if(rook->getHasMoved() == false){ // Determine if it has moved.
                                 if(!_checkRankFileBlocked(moveData, 0, 2)){ // If no pieces in the way.
+                                    // Check if king passes through check (squares f8, g8)
+                                    if(wouldKingBeInCheckAt(0, 5) || wouldKingBeInCheckAt(0, 6)) {
+                                        return false; // King would pass through or end in check
+                                    }
                                     return true;
                                 }
                             }
                         }
                     }
                 } else if (moveData.toCol == 2 && moveData.toRow == 0){ // Black castling long
+                    if(!king->getCanCastleLong()){
+                        return false;
+                    }
                     const Piece* p = getPieceAt(0, 0); // Possible rook?
                     if(p){ // If there is a piece
                         if(p->getType() == Piece_T::ROOK){ // If that piece is a rook
                             const Rook* rook = dynamic_cast<const Rook*>(p); // Safely cast to a Rook*
                             if(rook->getHasMoved() == false){ // Determine if it has moved.
                                 if(!_checkRankFileBlocked(moveData, 0, -2)){ // If no pieces in the way.
+                                    // Check if king passes through check (squares d8, c8)
+                                    if(wouldKingBeInCheckAt(0, 3) || wouldKingBeInCheckAt(0, 2)) {
+                                        return false; // King would pass through or end in check
+                                    }
                                     return true;
                                 }
                             }
@@ -1003,11 +1250,18 @@ bool Board::_isValidCastleMove(const MoveCoordsData& moveData, Color_T kingColor
             case Color_T::WHITE: {
                 if(moveData.toCol == MAX_COLS - 2 && moveData.toRow == MAX_ROWS - 1){ // White castling short
                     const Piece* p = getPieceAt(MAX_ROWS - 1, MAX_COLS - 1); // Possible rook?
+                    if(!king->getCanCastleShort()){
+                        return false;
+                    }
                     if(p){ // If there is a piece
                         if(p->getType() == Piece_T::ROOK){ // If that piece is a rook
                             const Rook* rook = dynamic_cast<const Rook*>(p); // Safely cast to a Rook*
                             if(rook->getHasMoved() == false){ // Determine if it has moved.
                                 if(!_checkRankFileBlocked(moveData, 0, 2)){ // If no pieces in the way.
+                                    // Check if king passes through check (squares f1, g1)
+                                    if(wouldKingBeInCheckAt(7, 5) || wouldKingBeInCheckAt(7, 6)) {
+                                        return false; // King would pass through or end in check
+                                    }
                                     return true;
                                 }
                             }
@@ -1015,11 +1269,18 @@ bool Board::_isValidCastleMove(const MoveCoordsData& moveData, Color_T kingColor
                     }
                 } else if (moveData.toCol == 2 && moveData.toRow == MAX_ROWS - 1){ // White castling long
                     const Piece* p = getPieceAt(MAX_ROWS - 1, 0); // Possible rook?
+                    if(!king->getCanCastleLong()){
+                        return false;
+                    }
                     if(p){ // If there is a piece
                         if(p->getType() == Piece_T::ROOK){ // If that piece is a rook
                             const Rook* rook = dynamic_cast<const Rook*>(p); // Safely cast to a Rook*
                             if(rook->getHasMoved() == false){ // Determine if it has moved.
                                 if(!_checkRankFileBlocked(moveData, 0, -2)){ // If no pieces in the way.
+                                    // Check if king passes through check (squares d1, c1)
+                                    if(wouldKingBeInCheckAt(7, 3) || wouldKingBeInCheckAt(7, 2)) {
+                                        return false; // King would pass through or end in check
+                                    }
                                     return true;
                                 }
                             }
@@ -1036,7 +1297,9 @@ bool Board::_isValidCastleMove(const MoveCoordsData& moveData, Color_T kingColor
 bool Board::_checkRankFileBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const {
     int rankDir{0};
     int fileDir{0};
-
+    if(moveData.fromRow == 5 && moveData.fromCol == 5 && moveData.toRow == 5 && moveData.toCol == 3){
+        std::cout << "Found bug";
+    }
     if(deltaRow == 0){
         if(deltaCol > 0){
             ++fileDir; // Right
@@ -1160,7 +1423,6 @@ bool Board::_isValidTwoStepMove(Color_T pawnColor, const MoveCoordsData& moveDat
 
             
             if(!toSquareOccupied && !midSquareOccupied){ // The two spaces are free to move in.
-                // *** Need to still implement a function to determine if it would put the kind in check. ***
                 return true; 
             }
             
@@ -1348,7 +1610,7 @@ std::unique_ptr<Piece> Board::_createPiece(char pieceChar, Color_T color, const 
 
     unsigned int row = square.getRow();
     switch(type) {
-        case Piece_T::ROOK:   
+        case Piece_T::ROOK: 
             return std::make_unique<Rook>(type, color, square, *this);
         case Piece_T::KNIGHT: 
             return std::make_unique<Knight>(type, color, square, *this);
@@ -1357,8 +1619,25 @@ std::unique_ptr<Piece> Board::_createPiece(char pieceChar, Color_T color, const 
         case Piece_T::QUEEN: 
             return std::make_unique<Queen>(type, color, square, *this); 
         case Piece_T::KING: {
+            const std::string& castleRightsRef = m_fen.getCastlingRightsStr();
             std::unique_ptr<King> king = std::make_unique<King>(type, color, square, *this); 
-            (color == Color_T::BLACK) ? _setBlackKing(king.get()) : _setWhiteKing(king.get()); 
+
+            if(color == Color_T::BLACK){
+                _setBlackKing(king.get());
+                if (castleRightsRef.find('k') == std::string::npos){
+                    king->setCanCastleShort(false);
+                } else if (castleRightsRef.find('q') == std::string::npos){
+                    king->setCanCastleLong(false);
+                }
+            } else {
+                _setWhiteKing(king.get());
+                if (castleRightsRef.find('K') == std::string::npos){
+                    king->setCanCastleShort(false);
+                } else if (castleRightsRef.find('Q') == std::string::npos){
+                    king->setCanCastleLong(false);
+                }
+            }
+            
             return king;
         }
         case Piece_T::PAWN:

@@ -12,7 +12,7 @@ class DBoard final {
 
         DPiece_T getBoardAt(size_t row, size_t col) const;
 
-        void moveTo(MoveCoordsData move);
+        void updateBoard(const std::string& fen);
         void notationToCoords(const std::string& notation, size_t& row, size_t& col) const;
 
         std::string dboardToString() const;

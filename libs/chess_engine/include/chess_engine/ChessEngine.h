@@ -10,10 +10,12 @@ class Piece;
 class ChessEngine {
 
     public:
-        explicit ChessEngine(const FENString& fen);
+        explicit ChessEngine(FENString fen);
         ~ChessEngine();
-        Game_Status isValidMove(MoveCoordsData move) const;
+        std::string getFenStr() const;
+        Game_Status isValidMove(MoveCoordsData move);
+        unsigned long int perft(unsigned int depth);
     private:
-        FENString m_originPosition;
+        FENString m_fen;
         std::unique_ptr<Board> m_board;
 };

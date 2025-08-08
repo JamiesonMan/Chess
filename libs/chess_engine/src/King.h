@@ -10,9 +10,17 @@ class King final : public Piece {
         void setHasMoved(bool);
         bool getHasMoved() const;
 
+        bool getCanCastleShort() const;
+        void setCanCastleShort(bool);
+
+        bool getCanCastleLong() const;
+        void setCanCastleLong(bool);
+
         virtual bool isValidMove(const Square& otherSquare) const override;
         virtual void updateAttacking() override;
 
     private:
         bool hasMoved;
+        bool m_canCastleShort;
+        bool m_canCastleLong;
 };

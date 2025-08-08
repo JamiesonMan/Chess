@@ -12,7 +12,6 @@ Rook::Rook(Piece_T pieceType, Color_T pieceColor, const Square& pieceSquareRef, 
             setRookShort(false);
             setRookLong(true);
         }
-
     }
 
 void Rook::setHasMoved(bool newHasMoved){

@@ -69,14 +69,15 @@ void Game::start(){
             // Create engine with current FEN state for move validation
             ChessEngine engine{m_currentFEN};
             Game_Status STATUS = engine.isValidMove(move);
-
+            if(STATUS != Game_Status::INVALID){
+                updateFENAfterMove(engine.getFenStr());
+            }
             switch(STATUS){
                 case Game_Status::INVALID:
                     throw std::invalid_argument("Invalid Move!");
 
                 case Game_Status::DRAW_END:
-                    this->m_dboard.moveTo(move);
-                    updateFENAfterMove(move);
+                    this->m_dboard.updateBoard(getCurrentFEN().getBoardStr());
                     _flipTurn();
 
                     std::system("clear");
@@ -92,8 +93,7 @@ void Game::start(){
                     break;
                 
                 case Game_Status::CHECKMATE_END: {
-                    this->m_dboard.moveTo(move);
-                    updateFENAfterMove(move);
+                    this->m_dboard.updateBoard(getCurrentFEN().getBoardStr());
                     _flipTurn();
 
                     std::system("clear");
@@ -111,6 +111,12 @@ void Game::start(){
                 }
                     
                 case Game_Status::IN_CHECK: {
+                    this->m_dboard.updateBoard(getCurrentFEN().getBoardStr());
+                    _flipTurn();
+
+                    std::system("clear");
+                    std::cout << this->m_dboard << std::endl;
+
                     if(pieceColor == Color_T::BLACK){
                         error << "White is in check!" << std::endl; 
                     } else {
@@ -120,8 +126,7 @@ void Game::start(){
                 }
 
                 case Game_Status::CONTINUE: {
-                    this->m_dboard.moveTo(move);
-                    updateFENAfterMove(move);
+                    this->m_dboard.updateBoard(getCurrentFEN().getBoardStr());
                     _flipTurn();
 
                     std::system("clear");
@@ -146,6 +151,7 @@ void Game::_getUserInput(std::string& square1, std::string& square2, size_t& fro
     
     std::system("clear");
     std::cout << this->m_dboard << std::endl;
+    std::cout << this->m_currentFEN.getFen() << std::endl;
 
     do{
         try{
@@ -169,6 +175,16 @@ void Game::_getUserInput(std::string& square1, std::string& square2, size_t& fro
     } while (fromRow >= MAX_ROWS || fromCol >= MAX_COLS || toRow >= MAX_ROWS || toCol >= MAX_COLS);
 }
 
+void Game::test() {
+    unsigned int depth{0};
+    std::cout << "Enter a perft val: ";
+    std::cin >> depth;
+
+    ChessEngine engine{m_currentFEN};
+    unsigned int result = engine.perft(depth);
+    std::cout << "Result: " << result << std::endl;
+}
+
 // FEN management functions
 const FENString& Game::getCurrentFEN() const {
     return m_currentFEN;
@@ -180,80 +196,6 @@ void Game::setCurrentFEN(const FENString& fen) {
     m_dboard = DBoard{fen};
 }
 
-void Game::updateFENAfterMove(const MoveCoordsData& move) {
-    // Reconstruct FEN string from current DBoard state
-    std::string boardString = "";
-    
-    // 1. Board position - traverse DBoard and convert to FEN notation
-    for(size_t row = 0; row < MAX_ROWS; ++row) {
-        size_t emptySquares = 0;
-        
-        for(size_t col = 0; col < MAX_COLS; ++col) {
-            DPiece_T piece = m_dboard.getBoardAt(row, col);
-            
-            if(piece == DPiece_T::NULL_PIECE) {
-                ++emptySquares;
-            } else {
-                // Add any accumulated empty squares
-                if(emptySquares > 0) {
-                    boardString += std::to_string(emptySquares);
-                    emptySquares = 0;
-                }
-                
-                // Add piece character
-                switch(piece) {
-                    case DPiece_T::B_PAWN:   boardString += 'p'; break;
-                    case DPiece_T::B_ROOK:   boardString += 'r'; break;
-                    case DPiece_T::B_KNIGHT: boardString += 'n'; break;
-                    case DPiece_T::B_BISHOP: boardString += 'b'; break;
-                    case DPiece_T::B_QUEEN:  boardString += 'q'; break;
-                    case DPiece_T::B_KING:   boardString += 'k'; break;
-                    case DPiece_T::W_PAWN:   boardString += 'P'; break;
-                    case DPiece_T::W_ROOK:   boardString += 'R'; break;
-                    case DPiece_T::W_KNIGHT: boardString += 'N'; break;
-                    case DPiece_T::W_BISHOP: boardString += 'B'; break;
-                    case DPiece_T::W_QUEEN:  boardString += 'Q'; break;
-                    case DPiece_T::W_KING:   boardString += 'K'; break;
-                    default: break;
-                }
-            }
-        }
-        
-        // Add any remaining empty squares at end of rank
-        if(emptySquares > 0) {
-            boardString += std::to_string(emptySquares);
-        }
-        
-        // Add rank separator (except for last rank)
-        if(row < MAX_ROWS - 1) {
-            boardString += '/';
-        }
-    }
-    
-    // 2. Active color (current turn)
-    char activeColor = (m_turn == Color_T::WHITE) ? 'w' : 'b';
-    
-    // 3. Castling rights (simplified - assume all rights lost after any move for now)
-    // TODO: Implement proper castling rights tracking
-    std::string castlingRights = "-";
-    
-    // 4. En passant target square (simplified - no en passant tracking for now)
-    // TODO: Implement proper en passant tracking
-    std::string enPassantTarget = "-";
-    
-    // 5. Halfmove clock (simplified - always 0 for now)
-    // TODO: Implement proper halfmove clock tracking
-    std::string halfmoveClock = "0";
-    
-    // 6. Fullmove number (simplified - always 1 for now)  
-    // TODO: Implement proper fullmove number tracking
-    std::string fullmoveNumber = "1";
-    
-    // Construct complete FEN string
-    std::string newFENString = boardString + " " + activeColor + " " + 
-                              castlingRights + " " + enPassantTarget + " " + 
-                              halfmoveClock + " " + fullmoveNumber;
-    
-    // Update current FEN
-    m_currentFEN = FENString{newFENString};
+void Game::updateFENAfterMove(const std::string& newFen) {
+    m_currentFEN = FENString{newFen};
 }
