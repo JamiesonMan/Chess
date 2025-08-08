@@ -7,7 +7,6 @@
 #include <future>
 
 ChessEngine::ChessEngine(FENString fen) : m_fen{fen}, m_board{std::make_unique<Board>(fen)} {}
-
 ChessEngine::~ChessEngine() = default;
 
 Game_Status ChessEngine::isValidMove(MoveCoordsData move) {
@@ -47,6 +46,7 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
     } else {
         std::cout << "Detected " << numCores << " CPU cores" << std::endl;
     }
+    std::cout << "Starting...\n" << std::endl;
     
     // Collect all valid moves first
     std::vector<std::tuple<MoveCoordsData, std::string>> validMoves;
@@ -88,7 +88,6 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
                             validMoves.emplace_back(move, moveNotation);
                         }
                     } catch (const std::exception& e) {
-                        // Invalid move or other error, skip
                         continue;
                     }
                 }
@@ -112,9 +111,7 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
                     unsigned long int nodes = engine._perftSingleThreaded(depth - 1);
                     return {notation, nodes};
                 }
-            } catch (const std::exception& e) {
-                // Invalid move, return 0
-            }
+            } catch (const std::exception& e) {}
             return {notation, 0};
         }));
     }
@@ -145,7 +142,7 @@ unsigned long int ChessEngine::_perftSingleThreaded(unsigned int depth) {
         for(size_t fromCol = 0; fromCol < MAX_COLS; ++fromCol) {
             const Piece* piece = m_board->getPieceAt(fromRow, fromCol);
             if(!piece) {
-                continue; // Skip empty squares
+                continue;
             }
             
             // Get the current active player fresh each iteration
@@ -153,7 +150,7 @@ unsigned long int ChessEngine::_perftSingleThreaded(unsigned int depth) {
             Color_T currentPlayerColor = (activePlayer == 'w') ? Color_T::WHITE : Color_T::BLACK;
             
             if(piece->getColor() != currentPlayerColor) {
-                continue; // Skip opponent pieces
+                continue;
             }
             
             // Try all possible destination squares for this piece
@@ -173,25 +170,20 @@ unsigned long int ChessEngine::_perftSingleThreaded(unsigned int depth) {
                                 // For recursion, create new engine and make the move
                                 std::string currentFen = m_fen.getFen();
                                 ChessEngine recursiveEngine{FENString(currentFen)};
-                                try {
-                                    Game_Status moveResult = recursiveEngine.isValidMove(move);
-                                    if(moveResult != Game_Status::INVALID) {
-                                        totalNodes += recursiveEngine._perftSingleThreaded(depth - 1);
-                                    }
-                                } catch (const std::exception& e) {
-                                    // Invalid move, skip
+                            
+                                Game_Status moveResult = recursiveEngine.isValidMove(move);
+                                if(moveResult != Game_Status::INVALID) {
+                                    totalNodes += recursiveEngine._perftSingleThreaded(depth - 1);
                                 }
                             }
                         }
-                    } catch (const std::exception& e) {
-                        // Invalid move or other error, skip
+                    } catch (const std::exception& e) {            
                         continue;
                     }
                 }
             }
         }
     }
-    
     return totalNodes;
 }
 

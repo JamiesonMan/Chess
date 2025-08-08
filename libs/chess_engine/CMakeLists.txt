@@ -4,8 +4,8 @@ project(chess_engine VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Create a shared chess_game library
-add_library(chess_engine SHARED
+# Create a static chess_game library
+add_library(chess_engine STATIC
     src/Board.cpp
     src/ColorUtil.cpp
     src/Pawn.cpp
