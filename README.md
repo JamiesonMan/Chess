@@ -1,4 +1,4 @@
-# Chess Engine Project
+# Chess Engine Project (OUTDATED TODO - UPDATE THE README WITH NEW PROJECT STRUCT)
 
 A modular chess application with separate libraries for game logic and AI engine development.
 
