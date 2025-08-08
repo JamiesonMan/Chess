@@ -1297,9 +1297,6 @@ bool Board::_isValidCastleMove(const MoveCoordsData& moveData, Color_T kingColor
 bool Board::_checkRankFileBlocked(const MoveCoordsData& moveData, int deltaRow, int deltaCol) const {
     int rankDir{0};
     int fileDir{0};
-    if(moveData.fromRow == 5 && moveData.fromCol == 5 && moveData.toRow == 5 && moveData.toCol == 3){
-        std::cout << "Found bug";
-    }
     if(deltaRow == 0){
         if(deltaCol > 0){
             ++fileDir; // Right
@@ -1725,6 +1722,7 @@ void Board::notationToCoords(const std::string& notation, unsigned int& row, uns
 
     row = 8 - (rowChar - '0');
 }
+
 
 std::ostream& operator<<(std::ostream& output, const Board& board){
     output << board.boardToString();

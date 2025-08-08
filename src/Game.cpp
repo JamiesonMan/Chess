@@ -181,8 +181,7 @@ void Game::test() {
     std::cin >> depth;
 
     ChessEngine engine{m_currentFEN};
-    unsigned int result = engine.perft(depth);
-    std::cout << "Result: " << result << std::endl;
+    engine.perft(depth);
 }
 
 // FEN management functions

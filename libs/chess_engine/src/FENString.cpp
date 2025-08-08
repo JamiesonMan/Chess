@@ -249,7 +249,26 @@ bool FENString::_isValidFen(std::string& fen, std::string& boardString, char& ac
 } 
         
 const std::string& FENString::getFen() const { return m_fen; }
-void FENString::setFen(std::string newFen) { m_fen = newFen; }
+void FENString::setFen(std::string newFen) { 
+    std::string boardString;
+    char activeTurn;
+    std::string castlingRights;
+    std::string enPassantTarget;
+    unsigned int halfMoveClock;
+    unsigned int totalMoves;
+
+    if(_isValidFen(newFen, boardString, activeTurn, castlingRights, enPassantTarget, halfMoveClock, totalMoves)){
+        m_fen = newFen;
+        m_boardString = boardString;
+        m_activeTurn = activeTurn;
+        m_castlingRights = castlingRights;
+        m_enPassantTarget = enPassantTarget;
+        m_halfMoveClock = halfMoveClock;
+        m_totalMoves = totalMoves;
+    } else {
+        throw std::invalid_argument("Error: Invalid FEN in setFen!");
+    }
+}
 
 const std::string& FENString::getBoardStr() const { return m_boardString; }
 void FENString::setBoardStr(std::string newBoardStr) { m_boardString = newBoardStr; }

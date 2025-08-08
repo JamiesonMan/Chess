@@ -23,9 +23,20 @@ int main(){
     if(option == 3){
         exit(0);
     } else if(option == 2){
-        FENString fen{"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"};
-        Game game{fen};
-        game.test();
+        std::string fenInput;
+        std::cout << "Enter a fen or type 's' for starting fen: ";
+        std::getline(std::cin, fenInput);
+        if(fenInput == "s"){
+            fenInput = FEN_STARTING_POS.getFen();
+        }
+        try{
+            FENString fen{fenInput};
+            Game game{fen};
+            game.test();
+        } catch (const std::exception& e){
+            std::cout << e.what() << std::endl;
+            return 0;
+        }
     } else if (option == 1) {
         Game game;
         game.start();

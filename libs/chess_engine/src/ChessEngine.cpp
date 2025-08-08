@@ -1,6 +1,10 @@
 #include "chess_engine/ChessEngine.h"
 #include "Board.h"
 #include <iostream>
+#include <vector>
+#include <thread>
+#include <mutex>
+#include <future>
 
 ChessEngine::ChessEngine(FENString fen) : m_fen{fen}, m_board{std::make_unique<Board>(fen)} {}
 
@@ -22,52 +26,69 @@ Game_Status ChessEngine::isValidMove(MoveCoordsData move) {
 }
 
 unsigned long int ChessEngine::perft(unsigned int depth) {
+    return _perft(depth, true);
+}
+
+unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
     if (depth == 0) {
         return 1;
     }
     
-    unsigned long int nodes = 0;
+    if(!showMoves) {
+        // For recursive calls, use the single-threaded version
+        return _perftSingleThreaded(depth);
+    }
     
-    // Save current state
-    std::string currentFen = m_fen.getFen();
-    char activePlayer = m_fen.getActiveTurn();
-    Color_T currentPlayerColor = (activePlayer == 'w') ? Color_T::WHITE : Color_T::BLACK;
+    // Display detected core count
+    unsigned int numCores = std::thread::hardware_concurrency();
+    if (numCores == 0) {
+        std::cout << "Hardware concurrency detection failed, using 4 cores as fallback" << std::endl;
+        numCores = 4;
+    } else {
+        std::cout << "Detected " << numCores << " CPU cores" << std::endl;
+    }
+    
+    // Collect all valid moves first
+    std::vector<std::tuple<MoveCoordsData, std::string>> validMoves;
     
     // Generate all possible moves for the current player
     for(size_t fromRow = 0; fromRow < MAX_ROWS; ++fromRow) {
         for(size_t fromCol = 0; fromCol < MAX_COLS; ++fromCol) {
             const Piece* piece = m_board->getPieceAt(fromRow, fromCol);
-            if(!piece || piece->getColor() != currentPlayerColor) {
-                continue; // Skip empty squares or opponent pieces
+            if(!piece) {
+                continue; // Skip empty squares
+            }
+            
+            // Get the current active player fresh each iteration
+            char activePlayer = m_fen.getActiveTurn();
+            Color_T currentPlayerColor = (activePlayer == 'w') ? Color_T::WHITE : Color_T::BLACK;
+            
+            if(piece->getColor() != currentPlayerColor) {
+                continue; // Skip opponent pieces
             }
             
             // Try all possible destination squares for this piece
             for(size_t toRow = 0; toRow < MAX_ROWS; ++toRow) {
                 for(size_t toCol = 0; toCol < MAX_COLS; ++toCol) {
-                    
                     MoveCoordsData move = {fromRow, fromCol, toRow, toCol};
-                    // Always create a fresh engine for each move to avoid board state corruption
-                    ChessEngine moveEngine{FENString(currentFen)};
                     
                     try {
-                        Game_Status moveResult = moveEngine.isValidMove(move);
-                        if(moveResult != Game_Status::INVALID) {
-
-                            std::cout << nodes << ". Valid Move: \n\tFROM: " << move.fromRow << ", " << move.fromCol << "\n\tTO: " << move.toRow << ", " << move.toCol << std::endl;
-                            if(depth == 1) {
-                                ++nodes; // At depth 1, just count valid moves
-                            } else {
-                                // Create a fresh engine from the updated FEN for recursion
-                                std::string updatedFen = moveEngine.getFenStr();
-                                ChessEngine recursiveEngine{FENString(updatedFen)};
-                                nodes += recursiveEngine.perft(depth - 1);
-                            }
+                        Square& from = m_board->getBoardAt(fromRow, fromCol);
+                        Square& to = m_board->getBoardAt(toRow, toCol);
+                        
+                        // Just check if move is legal without making it
+                        if(m_board->isLegalMove(from, to, piece)) {
+                            // Convert coordinates to algebraic notation
+                            size_t fromRowCopy = fromRow, fromColCopy = fromCol;
+                            size_t toRowCopy = toRow, toColCopy = toCol;
+                            std::string fromSquare = m_board->coordsToNotation(fromRowCopy, fromColCopy);
+                            std::string toSquare = m_board->coordsToNotation(toRowCopy, toColCopy);
+                            std::string moveNotation = fromSquare + toSquare;
+                            
+                            validMoves.emplace_back(move, moveNotation);
                         }
                     } catch (const std::exception& e) {
-                        std::string error{e.what()};
-                        if(error != "Invalid Move!"){
-                            std::cout << error << std::endl;
-                        }
+                        // Invalid move or other error, skip
                         continue;
                     }
                 }
@@ -75,7 +96,103 @@ unsigned long int ChessEngine::perft(unsigned int depth) {
         }
     }
     
-    return nodes;
+    // Process moves in parallel
+    std::vector<std::future<std::pair<std::string, unsigned long int>>> futures;
+    std::string currentFen = m_fen.getFen();
+    
+    for(const auto& moveData : validMoves) {
+        const auto& move = std::get<0>(moveData);
+        const auto& notation = std::get<1>(moveData);
+        
+        futures.push_back(std::async(std::launch::async, [this, move, notation, currentFen, depth]() -> std::pair<std::string, unsigned long int> {
+            try {
+                ChessEngine engine{FENString(currentFen)};
+                Game_Status moveResult = engine.isValidMove(move);
+                if(moveResult != Game_Status::INVALID) {
+                    unsigned long int nodes = engine._perftSingleThreaded(depth - 1);
+                    return {notation, nodes};
+                }
+            } catch (const std::exception& e) {
+                // Invalid move, return 0
+            }
+            return {notation, 0};
+        }));
+    }
+    
+    // Collect results and output them in order
+    unsigned long int totalNodes = 0;
+    for(size_t i = 0; i < futures.size(); ++i) {
+        auto result = futures[i].get();
+        if(result.second > 0) {
+            std::cout << result.first << ": " << result.second << std::endl;
+            totalNodes += result.second;
+        }
+    }
+    
+    std::cout << std::endl << "Nodes searched: " << totalNodes << std::endl << std::flush;
+    return totalNodes;
+}
+
+unsigned long int ChessEngine::_perftSingleThreaded(unsigned int depth) {
+    if (depth == 0) {
+        return 1;
+    }
+    
+    unsigned long int totalNodes = 0;
+    
+    // Generate all possible moves for the current player
+    for(size_t fromRow = 0; fromRow < MAX_ROWS; ++fromRow) {
+        for(size_t fromCol = 0; fromCol < MAX_COLS; ++fromCol) {
+            const Piece* piece = m_board->getPieceAt(fromRow, fromCol);
+            if(!piece) {
+                continue; // Skip empty squares
+            }
+            
+            // Get the current active player fresh each iteration
+            char activePlayer = m_fen.getActiveTurn();
+            Color_T currentPlayerColor = (activePlayer == 'w') ? Color_T::WHITE : Color_T::BLACK;
+            
+            if(piece->getColor() != currentPlayerColor) {
+                continue; // Skip opponent pieces
+            }
+            
+            // Try all possible destination squares for this piece
+            for(size_t toRow = 0; toRow < MAX_ROWS; ++toRow) {
+                for(size_t toCol = 0; toCol < MAX_COLS; ++toCol) {
+                    MoveCoordsData move = {fromRow, fromCol, toRow, toCol};
+                    
+                    try {
+                        Square& from = m_board->getBoardAt(fromRow, fromCol);
+                        Square& to = m_board->getBoardAt(toRow, toCol);
+                        
+                        // Just check if move is legal without making it
+                        if(m_board->isLegalMove(from, to, piece)) {
+                            if(depth == 1) {
+                                totalNodes++;
+                            } else {
+                                // For recursion, create new engine and make the move
+                                std::string currentFen = m_fen.getFen();
+                                ChessEngine recursiveEngine{FENString(currentFen)};
+                                try {
+                                    Game_Status moveResult = recursiveEngine.isValidMove(move);
+                                    if(moveResult != Game_Status::INVALID) {
+                                        totalNodes += recursiveEngine._perftSingleThreaded(depth - 1);
+                                    }
+                                } catch (const std::exception& e) {
+                                    // Invalid move, skip
+                                }
+                            }
+                        }
+                    } catch (const std::exception& e) {
+                        // Invalid move or other error, skip
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+    
+    return totalNodes;
 }
 
 std::string ChessEngine::getFenStr() const{

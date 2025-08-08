@@ -18,4 +18,6 @@ class ChessEngine {
     private:
         FENString m_fen;
         std::unique_ptr<Board> m_board;
+        unsigned long int _perft(unsigned int depth, bool showMoves);
+        unsigned long int _perftSingleThreaded(unsigned int depth);
 };
