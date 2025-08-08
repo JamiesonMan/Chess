@@ -68,17 +68,6 @@ class Board final {
         bool validQueenMove(const Square& from, const Square& to, Color_T queenColor) const;
         bool validKingMove(const Square& from, const Square& to, Color_T kingColor) const;
 
-        /*// Hypothetical-aware validation functions for use in king safety checks
-        bool validPawnMove(const Square& from, const Square& to, Color_T pawnColor, bool hasMoved, const HypotheticalMove* hypothetical) const;
-        bool validBishopMove(const Square& from, const Square& to, Color_T bishopColor, const HypotheticalMove* hypothetical) const;
-        bool validKnightMove(const Square& from, const Square& to, Color_T knightColor, const HypotheticalMove* hypothetical) const;
-        bool validRookMove(const Square& from, const Square& to, Color_T rookColor, const HypotheticalMove* hypothetical) const;
-        bool validQueenMove(const Square& from, const Square& to, Color_T queenColor, const HypotheticalMove* hypothetical) const;
-        bool validKingMove(const Square& from, const Square& to, Color_T kingColor, const HypotheticalMove* hypothetical) const;
-        */
-        
-
-
         bool pawnCanPromote(const Square& to, Color_T color) const;
 
         // if a move is legal returns true, else false.
