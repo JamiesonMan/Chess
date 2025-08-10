@@ -38,8 +38,20 @@ int main(){
             return 0;
         }
     } else if (option == 1) {
-        Game game;
-        game.start();
+        std::string fenInput;
+        std::cout << "Enter a fen or type 's' for starting fen: ";
+        std::getline(std::cin, fenInput);
+        if(fenInput == "s"){
+            fenInput = FEN_STARTING_POS.getFen();
+        }
+        try{
+            FENString fen{fenInput};
+            Game game{fen};
+            game.start();
+        } catch (const std::exception& e){
+            std::cout << e.what() << std::endl;
+            return 0;
+        }
     }
 
     return 0;

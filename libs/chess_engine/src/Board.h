@@ -19,8 +19,10 @@ class Board final {
     struct HypotheticalMove {
         size_t fromRow, fromCol;
         size_t toRow, toCol;
+        bool isEnPassant;
+        size_t enPassantCapturedRow, enPassantCapturedCol;
         
-        HypotheticalMove(size_t fRow, size_t fCol, size_t tRow, size_t tCol);
+        HypotheticalMove(size_t fRow, size_t fCol, size_t tRow, size_t tCol, const Board& board);
         bool isSquareOccupied(size_t row, size_t col, const Board& board) const;
         const Piece* getPieceAt(size_t row, size_t col, const Board& board) const;
         std::pair<size_t, size_t> getKingPosition(Color_T color, const Board& board) const;
@@ -75,6 +77,9 @@ class Board final {
 
         // Updates board and pieces.
         Game_Status moveTo(Square& from, Square& to);
+        
+        // Version for perft that specifies promotion piece without user interaction
+        Game_Status moveTo(Square& from, Square& to, Piece_T promotionPiece);
 
         // Convert chess notation (e.g. "E4") to row/col coordinates
         void notationToCoords(const std::string& notation, unsigned int& row, unsigned int& col) const;

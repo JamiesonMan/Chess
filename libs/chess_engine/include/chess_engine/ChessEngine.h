@@ -14,6 +14,7 @@ class ChessEngine {
         ~ChessEngine();
         std::string getFenStr() const;
         Game_Status isValidMove(MoveCoordsData move);
+        Game_Status isValidMove(MoveCoordsData move, Piece_T promotionPiece);
         unsigned long int perft(unsigned int depth);
     private:
         FENString m_fen;

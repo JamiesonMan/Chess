@@ -24,6 +24,21 @@ Game_Status ChessEngine::isValidMove(MoveCoordsData move) {
     }
 }
 
+Game_Status ChessEngine::isValidMove(MoveCoordsData move, Piece_T promotionPiece) {
+    Square& from = m_board->getBoardAt(move.fromRow, move.fromCol);
+    Square& to = m_board->getBoardAt(move.toRow, move.toCol);
+
+    const Piece* p = m_board->getPieceAt(move.fromRow, move.fromCol);
+    
+    if(m_board->isLegalMove(from, to, p)){
+        Game_Status gameStatus = m_board->moveTo(from, to, promotionPiece);
+        m_fen.setFen(m_board->getFenStr());
+        return gameStatus;
+    } else {
+        return Game_Status::INVALID;
+    }
+}
+
 unsigned long int ChessEngine::perft(unsigned int depth) {
     return _perft(depth, true);
 }
@@ -49,7 +64,7 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
     std::cout << "Starting...\n" << std::endl;
     
     // Collect all valid moves first
-    std::vector<std::tuple<MoveCoordsData, std::string>> validMoves;
+    std::vector<std::tuple<MoveCoordsData, std::string, Piece_T>> validMoves;
     
     // Generate all possible moves for the current player
     for(size_t fromRow = 0; fromRow < MAX_ROWS; ++fromRow) {
@@ -83,9 +98,21 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
                             size_t toRowCopy = toRow, toColCopy = toCol;
                             std::string fromSquare = m_board->coordsToNotation(fromRowCopy, fromColCopy);
                             std::string toSquare = m_board->coordsToNotation(toRowCopy, toColCopy);
-                            std::string moveNotation = fromSquare + toSquare;
                             
-                            validMoves.emplace_back(move, moveNotation);
+                            // Check if this is a pawn promotion move
+                            if(piece->getType() == Piece_T::PAWN && m_board->pawnCanPromote(to, piece->getColor())) {
+                                // Generate 4 separate moves for each promotion piece
+                                std::vector<Piece_T> promotionPieces = {Piece_T::QUEEN, Piece_T::ROOK, Piece_T::BISHOP, Piece_T::KNIGHT};
+                                std::vector<char> promotionSuffixes = {'q', 'r', 'b', 'n'};
+                                
+                                for(size_t i = 0; i < promotionPieces.size(); ++i) {
+                                    std::string moveNotation = fromSquare + toSquare + promotionSuffixes[i];
+                                    validMoves.emplace_back(move, moveNotation, promotionPieces[i]);
+                                }
+                            } else {
+                                std::string moveNotation = fromSquare + toSquare;
+                                validMoves.emplace_back(move, moveNotation, Piece_T::QUEEN); // Default, not used for non-promotions
+                            }
                         }
                     } catch (const std::exception& e) {
                         continue;
@@ -102,11 +129,20 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
     for(const auto& moveData : validMoves) {
         const auto& move = std::get<0>(moveData);
         const auto& notation = std::get<1>(moveData);
+        const auto& promotionPiece = std::get<2>(moveData);
         
-        futures.push_back(std::async(std::launch::async, [this, move, notation, currentFen, depth]() -> std::pair<std::string, unsigned long int> {
+        futures.push_back(std::async(std::launch::async, [this, move, notation, promotionPiece, currentFen, depth]() -> std::pair<std::string, unsigned long int> {
             try {
                 ChessEngine engine{FENString(currentFen)};
-                Game_Status moveResult = engine.isValidMove(move);
+                
+                // Check if this is a promotion move by looking at the notation
+                Game_Status moveResult;
+                if(notation.length() > 4 && (notation.back() == 'q' || notation.back() == 'r' || notation.back() == 'b' || notation.back() == 'n')) {
+                    moveResult = engine.isValidMove(move, promotionPiece);
+                } else {
+                    moveResult = engine.isValidMove(move);
+                }
+                
                 if(moveResult != Game_Status::INVALID) {
                     unsigned long int nodes = engine._perftSingleThreaded(depth - 1);
                     return {notation, nodes};
@@ -164,16 +200,37 @@ unsigned long int ChessEngine::_perftSingleThreaded(unsigned int depth) {
                         
                         // Just check if move is legal without making it
                         if(m_board->isLegalMove(from, to, piece)) {
-                            if(depth == 1) {
-                                totalNodes++;
+                            // Check if this is a pawn promotion move
+                            if(piece->getType() == Piece_T::PAWN && m_board->pawnCanPromote(to, piece->getColor())) {
+                                // Generate 4 separate moves for each promotion piece
+                                std::vector<Piece_T> promotionPieces = {Piece_T::QUEEN, Piece_T::ROOK, Piece_T::BISHOP, Piece_T::KNIGHT};
+                                
+                                for(Piece_T promotionPiece : promotionPieces) {
+                                    if(depth == 1) {
+                                        totalNodes++;
+                                    } else {
+                                        // For recursion, create new engine and make the move
+                                        std::string currentFen = m_fen.getFen();
+                                        ChessEngine recursiveEngine{FENString(currentFen)};
+                                    
+                                        Game_Status moveResult = recursiveEngine.isValidMove(move, promotionPiece);
+                                        if(moveResult != Game_Status::INVALID) {
+                                            totalNodes += recursiveEngine._perftSingleThreaded(depth - 1);
+                                        }
+                                    }
+                                }
                             } else {
-                                // For recursion, create new engine and make the move
-                                std::string currentFen = m_fen.getFen();
-                                ChessEngine recursiveEngine{FENString(currentFen)};
-                            
-                                Game_Status moveResult = recursiveEngine.isValidMove(move);
-                                if(moveResult != Game_Status::INVALID) {
-                                    totalNodes += recursiveEngine._perftSingleThreaded(depth - 1);
+                                if(depth == 1) {
+                                    totalNodes++;
+                                } else {
+                                    // For recursion, create new engine and make the move
+                                    std::string currentFen = m_fen.getFen();
+                                    ChessEngine recursiveEngine{FENString(currentFen)};
+                                
+                                    Game_Status moveResult = recursiveEngine.isValidMove(move);
+                                    if(moveResult != Game_Status::INVALID) {
+                                        totalNodes += recursiveEngine._perftSingleThreaded(depth - 1);
+                                    }
                                 }
                             }
                         }
