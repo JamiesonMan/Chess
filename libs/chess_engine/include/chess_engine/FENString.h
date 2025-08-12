@@ -69,7 +69,7 @@ class FENString {
         static constexpr size_t MIN_FEN_LENGTH{20};
         static constexpr size_t MAX_FEN_LENGTH{100};
         static constexpr size_t maxNumOfSpaceDelim{5};
-        static constexpr size_t MAX_HALF_MOVES{50};
+        static constexpr size_t MAX_HALF_MOVES{200}; // Allow games to continue past 50-move rule
         static constexpr std::string_view INIT_FEN{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"};
 
     private:
