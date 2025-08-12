@@ -12,7 +12,7 @@
     #include <windows.h>
 #endif
 
-void clearScreen() {
+static void clearScreen() {
 #ifdef _WIN32
     std::system("cls");
 #else
