@@ -11,7 +11,6 @@
 #include <atomic>
 #include <condition_variable>
 #include <fstream>
-#include <csignal>
 
 #ifdef _WIN32
     #include <process.h>
