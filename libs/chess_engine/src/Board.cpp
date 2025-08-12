@@ -1796,6 +1796,20 @@ bool Board::_isAttackLeftMove(Color_T pawnColor, const MoveCoordsData& moveData)
 }
 
 bool Board::_isValidEnPassant(Color_T pawnColor, const MoveCoordsData& moveData, bool toSquareOccupied) const {
+    // First check if there's a valid en passant target in the FEN
+    if(m_fen.getEnPassantTarget() == "-") {
+        return false; // No en passant possible if FEN shows no target
+    }
+    
+    // Verify the destination square matches the FEN en passant target
+    std::string enPassantTarget = m_fen.getEnPassantTarget();
+    size_t expectedRow = moveData.toRow;
+    size_t expectedCol = moveData.toCol;
+    std::string expectedSquare = coordsToNotation(expectedRow, expectedCol);
+    
+    if(enPassantTarget != expectedSquare) {
+        return false; // Move doesn't match the FEN en passant target
+    }
     
     switch(pawnColor){
         case Color_T::BLACK: {
