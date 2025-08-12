@@ -104,6 +104,10 @@ void ChessEngine::_executeSignal(std::string signal) {
                     _makeUciMove(move);
                 }
             }
+            
+            // Log the final FEN after processing all moves
+            std::string finalFen = m_board->getFenStr();
+            _logOutput("Final FEN after position startpos: " + finalFen);
         } else if (posType == "fen") {
             std::string fenStr;
             std::string token;
@@ -121,6 +125,10 @@ void ChessEngine::_executeSignal(std::string signal) {
                     _makeUciMove(move);
                 }
             }
+            
+            // Log the final FEN after processing all moves
+            std::string finalFen = m_board->getFenStr();
+            _logOutput("Final FEN after position fen: " + finalFen);
         }
     } else if (command == "go") {
         // Generate and return a random valid move
@@ -188,6 +196,10 @@ void ChessEngine::_processCommand(const std::string& signal) {
                     _makeUciMove(move);
                 }
             }
+            
+            // Log the final FEN after processing all moves
+            std::string finalFen = m_board->getFenStr();
+            _logOutput("Final FEN after position startpos: " + finalFen);
         } else if (posType == "fen") {
             std::string fenStr;
             std::string token;
@@ -205,6 +217,10 @@ void ChessEngine::_processCommand(const std::string& signal) {
                     _makeUciMove(move);
                 }
             }
+            
+            // Log the final FEN after processing all moves
+            std::string finalFen = m_board->getFenStr();
+            _logOutput("Final FEN after position fen: " + finalFen);
         }
     } else if (command == "go") {
         // Check for ponder mode
