@@ -251,13 +251,14 @@ void ChessEngine::_processCommand(const std::string& signal) {
         // Stop thinking and return best move found so far
         if (m_isPondering.load()) {
             m_isPondering.store(false);
+            std::string bestMove = _getRandomValidMove();
+            if (!bestMove.empty()) {
+                std::cout << "bestmove " << bestMove << std::endl;
+            } else {
+                std::cout << "bestmove 0000" << std::endl;
+            }
         }
-        std::string bestMove = _getRandomValidMove();
-        if (!bestMove.empty()) {
-            std::cout << "bestmove " << bestMove << std::endl;
-        } else {
-            std::cout << "bestmove 0000" << std::endl;
-        }
+        // If not pondering, don't return any move - this was the bug
     } else if (command == "setoption") {
         // Handle setoption commands (for now just acknowledge)
         // Format: setoption name <name> value <value>
