@@ -4,20 +4,37 @@
 #include "Game.h"
 #include "chess_engine/ChessEngine.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 std::atomic<bool> g_shouldExit{false};
 
+#ifdef _WIN32
+BOOL WINAPI consoleHandler(DWORD signal) {
+    if (signal == CTRL_C_EVENT || signal == CTRL_CLOSE_EVENT) {
+        std::cout << "\nReceived interrupt. Exiting..." << std::endl;
+        std::exit(0);
+    }
+    return FALSE;
+}
+#else
 void signalHandler(int signal) {
     if (signal == SIGINT || signal == SIGTERM) {
-        g_shouldExit.store(true);
         std::cout << "\nReceived interrupt. Exiting..." << std::endl;
         std::exit(0);
     }
 }
+#endif
 
 int main(int argc, char* argv[]){
     // Set up signal handlers for graceful exit
+#ifdef _WIN32
+    SetConsoleCtrlHandler(consoleHandler, TRUE);
+#else
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
+#endif
     
     // Check for menu mode command line argument
     if (argc > 1 && std::string(argv[1]) == "dev") {
