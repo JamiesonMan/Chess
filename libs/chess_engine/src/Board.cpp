@@ -6,6 +6,19 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+#include <cstdlib>
+
+#ifdef _WIN32
+    #include <windows.h>
+#endif
+
+void clearScreen() {
+#ifdef _WIN32
+    std::system("cls");
+#else
+    std::system("clear");
+#endif
+}
 
 #include "Pawn.h"
 #include "Bishop.h"
@@ -1239,7 +1252,7 @@ Piece_T Board::_promptForPromotion() const {
     std::ostringstream error{};
     unsigned int option{0};
     while(true){
-        std::system("clear");
+        clearScreen();
         std::cout << error.str() << std::endl;
         error.str(""); // reset error log.
         do {

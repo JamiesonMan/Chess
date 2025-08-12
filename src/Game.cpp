@@ -6,6 +6,18 @@
 #include <cstdlib>
 #include <string>
 
+#ifdef _WIN32
+    #include <windows.h>
+#endif
+
+void clearScreen() {
+#ifdef _WIN32
+    std::system("cls");
+#else
+    clearScreen();
+#endif
+}
+
 Game::Game() : m_currentFEN{FEN_STARTING_POS}, m_turn{Color_T::WHITE}, m_dboard{}, m_gameActive{false} {};
 
 Game::Game(const FENString& fen) : m_currentFEN{fen}, m_turn{Color_T::WHITE}, m_dboard{fen}, m_gameActive{false} {};
@@ -80,7 +92,7 @@ void Game::start(){
                     this->m_dboard.updateBoard(getCurrentFEN().getBoardStr());
                     _flipTurn();
 
-                    std::system("clear");
+                    clearScreen();
                     std::cout << this->m_dboard << std::endl;
                     std::cout << "DRAW" << std::endl;
                     if(_askPlayAgain()) {
@@ -96,7 +108,7 @@ void Game::start(){
                     this->m_dboard.updateBoard(getCurrentFEN().getBoardStr());
                     _flipTurn();
 
-                    std::system("clear");
+                    clearScreen();
                     std::cout << this->m_dboard << std::endl;
                     
                     Color_T winningColor = pieceColor;
@@ -114,7 +126,7 @@ void Game::start(){
                     this->m_dboard.updateBoard(getCurrentFEN().getBoardStr());
                     _flipTurn();
 
-                    std::system("clear");
+                    clearScreen();
                     std::cout << this->m_dboard << std::endl;
 
                     if(pieceColor == Color_T::BLACK){
@@ -129,7 +141,7 @@ void Game::start(){
                     this->m_dboard.updateBoard(getCurrentFEN().getBoardStr());
                     _flipTurn();
 
-                    std::system("clear");
+                    clearScreen();
                     std::cout << this->m_dboard << std::endl;
                     break;
                 }
@@ -149,7 +161,7 @@ void Game::_getUserInput(std::string& square1, std::string& square2, size_t& fro
     square2.clear();
     fromRow = 0, fromCol = 0, toRow = 0, toCol = 0;
     
-    std::system("clear");
+    clearScreen();
     std::cout << this->m_dboard << std::endl;
     std::cout << this->m_currentFEN.getFen() << std::endl;
 
