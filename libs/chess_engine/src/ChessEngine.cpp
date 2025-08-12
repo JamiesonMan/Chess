@@ -11,9 +11,11 @@
 #include <atomic>
 #include <condition_variable>
 #include <fstream>
+#include <csignal>
 
 #ifdef _WIN32
     #include <process.h>
+    #include <windows.h>
     #define getpid _getpid
 #else
     #include <unistd.h>

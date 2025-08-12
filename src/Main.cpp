@@ -1,8 +1,24 @@
 #include <iostream>
+#include <csignal>
+#include <atomic>
 #include "Game.h"
 #include "chess_engine/ChessEngine.h"
 
+std::atomic<bool> g_shouldExit{false};
+
+void signalHandler(int signal) {
+    if (signal == SIGINT || signal == SIGTERM) {
+        g_shouldExit.store(true);
+        std::cout << "\nReceived interrupt. Exiting..." << std::endl;
+        std::exit(0);
+    }
+}
+
 int main(int argc, char* argv[]){
+    // Set up signal handlers for graceful exit
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+    
     // Check for menu mode command line argument
     if (argc > 1 && std::string(argv[1]) == "dev") {
         // Show interactive menu
