@@ -11,7 +11,13 @@
 #include <atomic>
 #include <condition_variable>
 #include <fstream>
-#include <unistd.h>
+
+#ifdef _WIN32
+    #include <process.h>
+    #define getpid _getpid
+#else
+    #include <unistd.h>
+#endif
 
 ChessEngine::ChessEngine(FENString fen) : m_fen{fen}, m_board{std::make_unique<Board>(fen)} {
     // Open UCI log file - overwrite for each new session
