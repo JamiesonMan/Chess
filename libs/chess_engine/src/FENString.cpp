@@ -12,10 +12,6 @@ std::ostream& operator<<(std::ostream& output, const FENString& fen){
 }
 
 FENString::FENString(std::string fen) {
-    // Validate the fen string
-        if(fen == "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq E3 0 2"){
-            std::cout << "Reached";
-        }
         std::string boardString;
         char activeTurn;
         std::string castlingRights;

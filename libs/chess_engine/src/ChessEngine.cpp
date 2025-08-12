@@ -107,7 +107,7 @@ void ChessEngine::_executeSignal(std::string signal) {
             
             // Log the final FEN after processing all moves
             std::string finalFen = m_board->getFenStr();
-            _logOutput("Final FEN after position startpos: " + finalFen);
+            std::cout << "info string Initial FEN after reading position startpos: " << finalFen << std::endl;
         } else if (posType == "fen") {
             std::string fenStr;
             std::string token;
@@ -199,7 +199,7 @@ void ChessEngine::_processCommand(const std::string& signal) {
             
             // Log the final FEN after processing all moves
             std::string finalFen = m_board->getFenStr();
-            _logOutput("Final FEN after position startpos: " + finalFen);
+            std::cout << "info string Final FEN after position startpos: " << finalFen << std::endl;
         } else if (posType == "fen") {
             std::string fenStr;
             std::string token;
