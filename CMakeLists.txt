@@ -28,4 +28,21 @@ add_executable(Chess
 
 target_include_directories(Chess PRIVATE src)
 target_link_libraries(Chess PRIVATE chess_engine)
+
+# Visual Studio specific settings
+if(WIN32 AND MSVC)
+    # Set startup project
+    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Chess)
+    
+    # Set working directory for debugging
+    set_target_properties(Chess PROPERTIES 
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+        VS_DEBUGGER_COMMAND_ARGUMENTS "dev"
+    )
+    
+    # Create folders in Solution Explorer
+    set_target_properties(Chess PROPERTIES FOLDER "Applications")
+    set_target_properties(chess_engine PROPERTIES FOLDER "Libraries")
+endif()
+
 enable_testing()
