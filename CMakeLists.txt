@@ -29,6 +29,12 @@ add_executable(Chess
 target_include_directories(Chess PRIVATE src)
 target_link_libraries(Chess PRIVATE chess_engine)
 
+add_executable(debug_kiwipete
+    debug_kiwipete.cpp
+)
+
+target_link_libraries(debug_kiwipete PRIVATE chess_engine)
+
 # Visual Studio specific settings
 if(WIN32 AND MSVC)
     # Set startup project

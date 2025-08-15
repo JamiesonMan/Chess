@@ -657,10 +657,11 @@ Game_Status Board::moveTo(Square& from, Square& to) {
     if(targetPiece && !isEnPassant) {
         // Normal capture: remove the target piece
         targetPiece.reset(); // This deletes the captured piece
-    } else if (!targetPiece && movingPiece->getType() != Piece_T::PAWN){
-        ++m_totalHalfMoves;
+        m_totalHalfMoves = 0; // Reset on capture
+    } else if (movingPiece->getType() == Piece_T::PAWN){
+        m_totalHalfMoves = 0; // Reset on pawn move
     } else {
-        m_totalHalfMoves = 0;
+        ++m_totalHalfMoves; // Increment for non-pawn, non-capture moves
     }
 
     // Move the piece
@@ -678,8 +679,8 @@ Game_Status Board::moveTo(Square& from, Square& to) {
     if(getCheckToResetEnPassant()){
         for(size_t row{0}; row < 8; ++row){
             for(size_t col{0}; col < 8; ++col){
-                if(pieces[toRow][toCol]->getType() == Piece_T::PAWN){
-                    Pawn* pawn = dynamic_cast<Pawn*>(pieces[toRow][toCol].get());
+                if(pieces[row][col] && pieces[row][col]->getType() == Piece_T::PAWN){
+                    Pawn* pawn = dynamic_cast<Pawn*>(pieces[row][col].get());
                     if(pawn->getEnPassantCaptureStatus()){
                         pawn->setEnPassantCaptureStatus(false);
                     }
@@ -774,7 +775,10 @@ Game_Status Board::moveTo(Square& from, Square& to) {
     Piece* p = pieces[toRow][toCol].get();
     m_lastPieceMoved = p; // Update this.
 
-    ++m_totalMoves;
+    // Only increment full move counter after Black's move
+    if(p->getColor() == Color_T::BLACK) {
+        ++m_totalMoves;
+    }
     // Update the fen with new position.
     _updateFen();
 
@@ -875,10 +879,11 @@ Game_Status Board::moveTo(Square& from, Square& to, Piece_T promotionPiece) {
     if(targetPiece && !isEnPassant) {
         // Normal capture: remove the target piece
         targetPiece.reset(); // This deletes the captured piece
-    } else if (!targetPiece && movingPiece->getType() != Piece_T::PAWN){
-        ++m_totalHalfMoves;
+        m_totalHalfMoves = 0; // Reset on capture
+    } else if (movingPiece->getType() == Piece_T::PAWN){
+        m_totalHalfMoves = 0; // Reset on pawn move
     } else {
-        m_totalHalfMoves = 0;
+        ++m_totalHalfMoves; // Increment for non-pawn, non-capture moves
     }
 
     // Move the piece
@@ -991,7 +996,10 @@ Game_Status Board::moveTo(Square& from, Square& to, Piece_T promotionPiece) {
     Piece* p = pieces[toRow][toCol].get();
     m_lastPieceMoved = p; // Update this.
 
-    ++m_totalMoves;
+    // Only increment full move counter after Black's move
+    if(p->getColor() == Color_T::BLACK) {
+        ++m_totalMoves;
+    }
     // Update the fen with new position.
     _updateFen();
 

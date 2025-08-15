@@ -7,13 +7,14 @@
 #include <condition_variable>
 #include <fstream>
 #include <queue>
-#include "chess_engine/Types.h"
+#include "Types.h"
 
 class Board;
 class Square;
 class Piece;
 
 class ChessEngine {
+
     struct EngineID {
         std::string name;
         std::string author;
@@ -27,6 +28,7 @@ class ChessEngine {
     static const EngineOptionNames engineOptionNames;
 
     public:
+
         explicit ChessEngine(FENString fen);
         ~ChessEngine();
         std::string getFenStr() const;
@@ -50,6 +52,8 @@ class ChessEngine {
         // UCI logging
         mutable std::ofstream m_uciLog;
         
+        UCICommand_T _commandHit(const std::string& in) const;
+
         unsigned long int _perft(unsigned int depth, bool showMoves);
         unsigned long int _perftSingleThreaded(unsigned int depth);
 
@@ -62,6 +66,8 @@ class ChessEngine {
         void _processCommand(const std::string& command);
         void _logOutput(const std::string& output) const;
 
+        void _printResponse(const std::string& response) const;
+        void _printInfo(const std::string& info) const;
         void _printIdentity() const;
         void _printOptions() const;
         

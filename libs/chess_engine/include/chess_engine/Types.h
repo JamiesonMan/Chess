@@ -5,6 +5,8 @@
 static const size_t MAX_ROWS{8};
 static const size_t MAX_COLS{8};
 
+enum class UCICommand_T { INVALID, QUIT, ISREADY, UCINEWGAME, POSITION, GO, STOP, PONDERHIT, SETOPTION, UCI };
+
 enum class Color_T : bool { WHITE = true, BLACK = false };
 
 enum class Piece_T : unsigned int { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };

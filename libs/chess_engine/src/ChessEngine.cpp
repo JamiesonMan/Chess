@@ -20,6 +20,9 @@
     #include <unistd.h>
 #endif
 
+const ChessEngine::EngineID ChessEngine::engineID = {"Wazzu Engine", "Jamieson Mansker"};
+const ChessEngine::EngineOptionNames ChessEngine::engineOptionNames = {"Threads"};
+
 ChessEngine::ChessEngine(FENString fen) : m_fen{fen}, m_board{std::make_unique<Board>(fen)} {
     // Open UCI log file - overwrite for each new session
     m_uciLog.open("ucilog.txt", std::ios::out | std::ios::trunc);
@@ -35,26 +38,147 @@ ChessEngine::~ChessEngine() {
     }
 }
 
-const ChessEngine::EngineID ChessEngine::engineID = {"Wazzu Engine", "Jamieson Mansker"};
-const ChessEngine::EngineOptionNames ChessEngine::engineOptionNames = {"Threads"};
+// Dedicate a thread to listening, await commands, execute command.
+void ChessEngine::uciStart() {
+    std::cout << "Wazzu Chess Engine v1.0" << std::endl;
 
-void ChessEngine::_printIdentity() const {
-    std::string nameOutput = "id name " + engineID.name;
-    std::string authorOutput = "id author " + engineID.author;
+    // Start the signal listener thread
+    m_signalThread = std::thread(&ChessEngine::_signalListener, this);
     
-    std::cout << nameOutput << std::endl;
-    std::cout << authorOutput << std::endl;
+    // Main UCI loop - process commands
+    while (!m_shouldStop.load()) {
+        std::unique_lock<std::mutex> lock(m_commandMutex);
+        m_commandCV.wait(lock, [this] { return !m_commandQueue.empty() || m_shouldStop.load(); });
+        
+        if (m_shouldStop.load()) break;
+        
+        if (!m_commandQueue.empty()) {
+            std::string command = m_commandQueue.front();
+            m_commandQueue.pop();
+            lock.unlock();
+            
+            _processCommand(command);
+        }
+    }
     
-    _logOutput(nameOutput);
-    _logOutput(authorOutput);
+    // Clean up thread
+    if (m_signalThread.joinable()) {
+        m_signalThread.join();
+    }
 }
 
-void ChessEngine::_printOptions() const {
-    std::string optionOutput = "option name " + engineOptionNames.threads + " type spin default 1 min 1 max 1024";
-    std::cout << optionOutput << std::endl;
-    _logOutput(optionOutput);
+void ChessEngine::_makeUciMove(const std::string& uciMove) {
+    try {
+        if (uciMove.length() < 4) return;
+        
+        // Parse UCI move format (e.g., "e2e4", "e7e8q" for promotion)
+        char fromFile = uciMove[0];
+        char fromRank = uciMove[1];
+        char toFile = uciMove[2];
+        char toRank = uciMove[3];
+        
+        // Validate coordinates
+        if (fromFile < 'a' || fromFile > 'h' || toFile < 'a' || toFile > 'h' ||
+            fromRank < '1' || fromRank > '8' || toRank < '1' || toRank > '8') {
+            return;
+        }
+        
+        // Convert to array indices (a1 = row 7, col 0)
+        size_t fromRow = 8 - (fromRank - '0');
+        size_t fromCol = fromFile - 'a';
+        size_t toRow = 8 - (toRank - '0');
+        size_t toCol = toFile - 'a';
+        
+        MoveCoordsData move = {fromRow, fromCol, toRow, toCol};
+        
+        // Check for promotion
+        if (uciMove.length() == 5) {
+            char promotionChar = uciMove[4];
+            Piece_T promotionPiece;
+            switch (promotionChar) {
+                case 'q': promotionPiece = Piece_T::QUEEN; break;
+                case 'r': promotionPiece = Piece_T::ROOK; break;
+                case 'b': promotionPiece = Piece_T::BISHOP; break;
+                case 'n': promotionPiece = Piece_T::KNIGHT; break;
+                default: return;
+            }
+            isValidMove(move, promotionPiece);
+        } else {
+            isValidMove(move);
+        }
+    } catch (const std::exception& e) {
+        // Log error but don't crash - probably corrupted FEN
+        if (m_uciLog.is_open()) {
+            m_uciLog << "ERROR in _makeUciMove: " << e.what() << " for move: " << uciMove << std::endl;
+            m_uciLog << "Current FEN: " << m_fen.getFen() << std::endl;
+            m_uciLog.flush();
+        }
+        // Don't process this move, continue with current position
+        return;
+    }
 }
 
+std::string ChessEngine::_getRandomValidMove() const {
+    std::vector<std::string> validMoves;
+    
+    // Generate all possible moves for the current player
+    for(size_t fromRow = 0; fromRow < MAX_ROWS; ++fromRow) {
+        for(size_t fromCol = 0; fromCol < MAX_COLS; ++fromCol) {
+            const Piece* piece = m_board->getPieceAt(fromRow, fromCol);
+            if(!piece) continue;
+            
+            // Get the current active player
+            char activePlayer = m_fen.getActiveTurn();
+            Color_T currentPlayerColor = (activePlayer == 'w') ? Color_T::WHITE : Color_T::BLACK;
+            
+            if(piece->getColor() != currentPlayerColor) continue;
+            
+            // Try all possible destination squares for this piece
+            for(size_t toRow = 0; toRow < MAX_ROWS; ++toRow) {
+                for(size_t toCol = 0; toCol < MAX_COLS; ++toCol) {
+                    try {
+                        Square& from = m_board->getBoardAt(fromRow, fromCol);
+                        Square& to = m_board->getBoardAt(toRow, toCol);
+                        
+                        if(m_board->isLegalMove(from, to, piece)) {
+                            // Convert coordinates to UCI notation
+                            char fromFile = 'a' + fromCol;
+                            char fromRank = '8' - fromRow;
+                            char toFile = 'a' + toCol;
+                            char toRank = '8' - toRow;
+                            
+                            // Check if this is a pawn promotion move
+                            if(piece->getType() == Piece_T::PAWN && m_board->pawnCanPromote(to, piece->getColor())) {
+                                // Add all promotion options
+                                std::vector<char> promotions = {'q', 'r', 'b', 'n'};
+                                for(char promo : promotions) {
+                                    std::string move = std::string() + fromFile + fromRank + toFile + toRank + promo;
+                                    validMoves.push_back(move);
+                                }
+                            } else {
+                                std::string move = std::string() + fromFile + fromRank + toFile + toRank;
+                                validMoves.push_back(move);
+                            }
+                        }
+                    } catch (const std::exception& e) {
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+    
+    if (validMoves.empty()) {
+        return "a1a1"; // No valid moves return a1a1
+    }
+    
+    // Use time-based seed for randomness
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dist(0, validMoves.size() - 1);
+    
+    return validMoves[dist(gen)];
+}
 std::string ChessEngine::_collectSignal() const {
     std::string signal;
     std::getline(std::cin, signal);
@@ -68,13 +192,6 @@ std::string ChessEngine::_collectSignal() const {
     return signal;
 }
 
-void ChessEngine::_logOutput(const std::string& output) const {
-    if (m_uciLog.is_open()) {
-        m_uciLog << "Engine -> GUI: " << output << std::endl;
-        m_uciLog.flush();
-    }
-}
-
 void ChessEngine::_executeSignal(std::string signal) {
     std::istringstream iss(signal);
     std::string command;
@@ -86,14 +203,14 @@ void ChessEngine::_executeSignal(std::string signal) {
         std::cout << "readyok" << std::endl;
     } else if (command == "ucinewgame") {
         // Reset to starting position
-        m_fen = FENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        m_fen = FEN_STARTING_POS;
         m_board = std::make_unique<Board>(m_fen);
     } else if (command == "position") {
         std::string posType;
         iss >> posType;
         
         if (posType == "startpos") {
-            m_fen = FENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+            m_fen = FEN_STARTING_POS;
             m_board = std::make_unique<Board>(m_fen);
             
             std::string movesKeyword;
@@ -107,7 +224,9 @@ void ChessEngine::_executeSignal(std::string signal) {
             
             // Log the final FEN after processing all moves
             std::string finalFen = m_board->getFenStr();
-            std::cout << "info string Initial FEN after reading position startpos: " << finalFen << std::endl;
+            std::string logMessage = "Final FEN after position fen: " + finalFen;
+            std::cout << logMessage << std::endl;
+            _logOutput(logMessage);
         } else if (posType == "fen") {
             std::string fenStr;
             std::string token;
@@ -128,7 +247,9 @@ void ChessEngine::_executeSignal(std::string signal) {
             
             // Log the final FEN after processing all moves
             std::string finalFen = m_board->getFenStr();
-            _logOutput("Final FEN after position fen: " + finalFen);
+            std::string logMessage = "Final FEN after position fen: " + finalFen;
+            std::cout << logMessage << std::endl;
+            _logOutput(logMessage);
         }
     } else if (command == "go") {
         // Generate and return a random valid move
@@ -170,148 +291,176 @@ void ChessEngine::_processCommand(const std::string& signal) {
     std::istringstream iss(signal);
     std::string command;
     iss >> command;
+
+    std::string logError;
+    std::string response;
     
-    if (command == "quit") {
-        m_shouldStop.store(true);
-    } else if (command == "isready") {
-        std::cout << "readyok" << std::endl;
-        _logOutput("readyok");
-    } else if (command == "ucinewgame") {
-        // Reset to starting position
-        m_fen = FENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        m_board = std::make_unique<Board>(m_fen);
-    } else if (command == "position") {
-        std::string posType;
-        iss >> posType;
+    switch(_commandHit(command)){
+        case UCICommand_T::INVALID:
+            logError = "Invalid Command: " + command;
+            break;
         
-        if (posType == "startpos") {
-            m_fen = FENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        case UCICommand_T::UCI:
+            _printIdentity();
+            _printOptions();
+
+            response = "uciok";
+            break;
+        
+        case UCICommand_T::QUIT:
+            m_shouldStop.store(true);
+            break;
+        
+        case UCICommand_T::ISREADY: 
+            response = "readyok";
+            break;
+    
+        case UCICommand_T::UCINEWGAME: // Reset to starting position
+            m_fen = FEN_STARTING_POS;
             m_board = std::make_unique<Board>(m_fen);
+            break;
+        
+        case UCICommand_T::POSITION: {
+            std::string posType;
+            iss >> posType;
             
-            std::string movesKeyword;
-            iss >> movesKeyword;
-            if (movesKeyword == "moves") {
-                std::string move;
-                while (iss >> move) {
-                    _makeUciMove(move);
+            if (posType == "startpos") {
+                m_fen = FEN_STARTING_POS;
+                m_board = std::make_unique<Board>(m_fen);
+                
+                std::string movesKeyword;
+                iss >> movesKeyword;
+                if (movesKeyword == "moves") {
+                    std::string move;
+                    while (iss >> move) {
+                        _makeUciMove(move);
+                    }
+                } else if (!movesKeyword.empty()){
+                    logError = "Invalid Command: " + command;
+                }
+                
+                // Log the final FEN after processing all moves
+                std::string finalFen = m_board->getFenStr();
+                std::string info = "FEN Generated: " + finalFen;
+                _printInfo(info);
+            } else if (posType == "fen") {
+                std::string fenStr;
+                std::string token;
+                while (iss >> token && token != "moves") {
+                    if (!fenStr.empty()) { fenStr += " "; }
+                    fenStr += token;
+                }
+                
+                m_fen = FENString(fenStr);
+                m_board = std::make_unique<Board>(m_fen);
+                
+                if (token == "moves") {
+                    std::string move;
+                    while (iss >> move) {
+                        _makeUciMove(move);
+                    }
+                }
+                
+                // Log the final FEN after processing all moves
+                std::string finalFen = m_board->getFenStr();
+                std::string info = "FEN Generated: " + finalFen;
+                _printInfo(info);
+            } else {
+                logError = "Invalid Command: position lacks an argument";
+            }
+            break;
+        }
+
+        case UCICommand_T::GO: {
+            // Check for ponder mode
+            std::string param;
+            bool isPonder = false;
+            while (iss >> param) {
+                if (param == "ponder") {
+                    isPonder = true;
+                    break;
                 }
             }
             
-            // Log the final FEN after processing all moves
-            std::string finalFen = m_board->getFenStr();
-            std::cout << "info string Final FEN after position startpos: " << finalFen << std::endl;
-        } else if (posType == "fen") {
-            std::string fenStr;
-            std::string token;
-            while (iss >> token && token != "moves") {
-                if (!fenStr.empty()) fenStr += " ";
-                fenStr += token;
-            }
-            
-            m_fen = FENString(fenStr);
-            m_board = std::make_unique<Board>(m_fen);
-            
-            if (token == "moves") {
-                std::string move;
-                while (iss >> move) {
-                    _makeUciMove(move);
+            if (isPonder) {
+                m_isPondering.store(true);
+                // In ponder mode, we would start thinking but wait for ponderhit or stop
+                // For now, just acknowledge ponder mode
+            } else {
+                // For 50-move rule, still make a move and let GUI handle draw detection
+                // UCI engines typically don't claim draws themselves
+                
+                // Generate and return a random valid move
+                std::string bestMove = _getRandomValidMove();
+                if (!bestMove.empty()) {
+                    response = "bestmove " + bestMove;
+                } else {
+                    response = "bestmove 0000";
                 }
             }
-            
-            // Log the final FEN after processing all moves
-            std::string finalFen = m_board->getFenStr();
-            _logOutput("Final FEN after position fen: " + finalFen);
+            break;
         }
-    } else if (command == "go") {
-        // Check for ponder mode
-        std::string param;
-        bool isPonder = false;
-        while (iss >> param) {
-            if (param == "ponder") {
-                isPonder = true;
-                break;
+        case UCICommand_T::STOP:
+            if (m_isPondering.load()) {
+                m_isPondering.store(false);
+                std::string bestMove = _getRandomValidMove();
+                if (!bestMove.empty()) {
+                    response = "bestmove " + bestMove;
+                } else {
+                    response = "bestmove 0000";
+                }
             }
-        }
-        
-        if (isPonder) {
-            m_isPondering.store(true);
-            // In ponder mode, we would start thinking but wait for ponderhit or stop
-            // For now, just acknowledge ponder mode
-        } else {
-            // For 50-move rule, still make a move and let GUI handle draw detection
-            // UCI engines typically don't claim draws themselves
-            
-            // Generate and return a random valid move
-            std::string bestMove = _getRandomValidMove();
-            if (!bestMove.empty()) {
-                std::string moveOutput = "bestmove " + bestMove;
-                std::cout << moveOutput << std::endl;
-                _logOutput(moveOutput);
-            } else {
-                std::cout << "bestmove 0000" << std::endl;
-                _logOutput("bestmove 0000");
+            break;
+        case UCICommand_T::PONDERHIT:
+            // Ponder hit - convert from pondering to actual search
+            if (m_isPondering.load()) {
+                m_isPondering.store(false);
+                std::string bestMove = _getRandomValidMove();
+                if (!bestMove.empty()) {
+                    response = "bestmove " + bestMove;
+                } else {
+                    response =  "bestmove 0000";
+                }
             }
+            break;
+        case UCICommand_T::SETOPTION: {
+            std::string name, nameValue, value, valueValue;
+            iss >> name >> nameValue >> value >> valueValue;
+            // For now, just acknowledge - could store thread count etc.
+            break;
         }
-    } else if (command == "ponderhit") {
-        // Ponder hit - convert from pondering to actual search
-        if (m_isPondering.load()) {
-            m_isPondering.store(false);
-            std::string bestMove = _getRandomValidMove();
-            if (!bestMove.empty()) {
-                std::cout << "bestmove " << bestMove << std::endl;
-            } else {
-                std::cout << "bestmove 0000" << std::endl;
-            }
-        }
-    } else if (command == "stop") {
-        // Stop thinking and return best move found so far
-        if (m_isPondering.load()) {
-            m_isPondering.store(false);
-            std::string bestMove = _getRandomValidMove();
-            if (!bestMove.empty()) {
-                std::cout << "bestmove " << bestMove << std::endl;
-            } else {
-                std::cout << "bestmove 0000" << std::endl;
-            }
-        }
-        // If not pondering, don't return any move - this was the bug
-    } else if (command == "setoption") {
-        // Handle setoption commands (for now just acknowledge)
-        // Format: setoption name <name> value <value>
-        std::string name, nameValue, value, valueValue;
-        iss >> name >> nameValue >> value >> valueValue;
-        // For now, just acknowledge - could store thread count etc.
     }
+
+    if(!logError.empty()){ _printInfo(logError); }
+    if(!response.empty()){ _printResponse(response); }
 }
 
-void ChessEngine::uciStart() {
-    _printIdentity();
-    _printOptions();
-    std::cout << "uciok" << std::endl;
-    _logOutput("uciok");
-    
-    // Start the signal listener thread
-    m_signalThread = std::thread(&ChessEngine::_signalListener, this);
-    
-    // Main UCI loop - process commands
-    while (!m_shouldStop.load()) {
-        std::unique_lock<std::mutex> lock(m_commandMutex);
-        m_commandCV.wait(lock, [this] { return !m_commandQueue.empty() || m_shouldStop.load(); });
-        
-        if (m_shouldStop.load()) break;
-        
-        if (!m_commandQueue.empty()) {
-            std::string command = m_commandQueue.front();
-            m_commandQueue.pop();
-            lock.unlock();
-            
-            _processCommand(command);
-        }
-    }
-    
-    // Clean up thread
-    if (m_signalThread.joinable()) {
-        m_signalThread.join();
+void ChessEngine::_printResponse(const std::string& response) const {
+    std::cout << response << std::endl;
+}
+
+UCICommand_T ChessEngine::_commandHit(const std::string& in) const {
+    // This is because switch cant work on std::string but I still want the switch because its clean.
+    if(in == "quit"){
+        return UCICommand_T::QUIT;
+    } else if (in == "isready"){
+        return UCICommand_T::ISREADY;
+    } else if (in == "ucinewgame"){
+        return UCICommand_T::UCINEWGAME;
+    } else if (in == "position"){
+        return UCICommand_T::POSITION;
+    } else if (in == "go"){
+        return UCICommand_T::GO;
+    } else if (in == "stop"){
+        return UCICommand_T::STOP;
+    } else if (in == "ponderhit"){
+        return UCICommand_T::PONDERHIT;
+    } else if (in == "setoption"){
+        return UCICommand_T::SETOPTION;
+    } else if (in == "uci"){
+        return UCICommand_T::UCI;
+    } else {
+        return UCICommand_T::INVALID;
     }
 }
 
@@ -345,6 +494,38 @@ Game_Status ChessEngine::isValidMove(MoveCoordsData move, Piece_T promotionPiece
     }
 }
 
+void ChessEngine::_printIdentity() const {
+    std::string nameOutput = "id name " + engineID.name;
+    std::string authorOutput = "id author " + engineID.author + "\n";
+    
+    std::cout << nameOutput << std::endl;
+    std::cout << authorOutput << std::endl;
+    
+    _logOutput(nameOutput);
+    _logOutput(authorOutput);
+}
+
+void ChessEngine::_printOptions() const {
+    std::string optionOutput = "option name " + engineOptionNames.threads + " type spin default 1 min 1 max 1024";
+    std::cout << optionOutput << std::endl;
+    _logOutput(optionOutput);
+}
+
+void ChessEngine::_logOutput(const std::string& output) const {
+    if (m_uciLog.is_open()) {
+        m_uciLog << "Engine -> GUI: " << output << std::endl;
+        m_uciLog.flush();
+    }
+}
+
+// Add a type for more than just string TODO.
+void ChessEngine::_printInfo(const std::string& info) const {
+    std::string infoString = "info string " + info;
+    std::cout << infoString << std::endl;
+    _logOutput(infoString);
+    
+}
+
 unsigned long int ChessEngine::perft(unsigned int depth) {
     return _perft(depth, true);
 }
@@ -367,7 +548,7 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
     } else {
         std::cout << "Detected " << numCores << " CPU cores" << std::endl;
     }
-    std::cout << "Starting...\n" << std::endl;
+    std::cout << "Calculating...\n" << std::endl;
     
     // Collect all valid moves first
     std::vector<std::tuple<MoveCoordsData, std::string, Piece_T>> validMoves;
@@ -548,119 +729,6 @@ unsigned long int ChessEngine::_perftSingleThreaded(unsigned int depth) {
         }
     }
     return totalNodes;
-}
-
-void ChessEngine::_makeUciMove(const std::string& uciMove) {
-    try {
-        if (uciMove.length() < 4) return;
-        
-        // Parse UCI move format (e.g., "e2e4", "e7e8q" for promotion)
-        char fromFile = uciMove[0];
-        char fromRank = uciMove[1];
-        char toFile = uciMove[2];
-        char toRank = uciMove[3];
-        
-        // Validate coordinates
-        if (fromFile < 'a' || fromFile > 'h' || toFile < 'a' || toFile > 'h' ||
-            fromRank < '1' || fromRank > '8' || toRank < '1' || toRank > '8') {
-            return;
-        }
-        
-        // Convert to array indices (a1 = row 7, col 0)
-        size_t fromRow = 8 - (fromRank - '0');
-        size_t fromCol = fromFile - 'a';
-        size_t toRow = 8 - (toRank - '0');
-        size_t toCol = toFile - 'a';
-        
-        MoveCoordsData move = {fromRow, fromCol, toRow, toCol};
-        
-        // Check for promotion
-        if (uciMove.length() == 5) {
-            char promotionChar = uciMove[4];
-            Piece_T promotionPiece;
-            switch (promotionChar) {
-                case 'q': promotionPiece = Piece_T::QUEEN; break;
-                case 'r': promotionPiece = Piece_T::ROOK; break;
-                case 'b': promotionPiece = Piece_T::BISHOP; break;
-                case 'n': promotionPiece = Piece_T::KNIGHT; break;
-                default: return;
-            }
-            isValidMove(move, promotionPiece);
-        } else {
-            isValidMove(move);
-        }
-    } catch (const std::exception& e) {
-        // Log error but don't crash - probably corrupted FEN
-        if (m_uciLog.is_open()) {
-            m_uciLog << "ERROR in _makeUciMove: " << e.what() << " for move: " << uciMove << std::endl;
-            m_uciLog << "Current FEN: " << m_fen.getFen() << std::endl;
-            m_uciLog.flush();
-        }
-        // Don't process this move, continue with current position
-        return;
-    }
-}
-
-std::string ChessEngine::_getRandomValidMove() const {
-    std::vector<std::string> validMoves;
-    
-    // Generate all possible moves for the current player
-    for(size_t fromRow = 0; fromRow < MAX_ROWS; ++fromRow) {
-        for(size_t fromCol = 0; fromCol < MAX_COLS; ++fromCol) {
-            const Piece* piece = m_board->getPieceAt(fromRow, fromCol);
-            if(!piece) continue;
-            
-            // Get the current active player
-            char activePlayer = m_fen.getActiveTurn();
-            Color_T currentPlayerColor = (activePlayer == 'w') ? Color_T::WHITE : Color_T::BLACK;
-            
-            if(piece->getColor() != currentPlayerColor) continue;
-            
-            // Try all possible destination squares for this piece
-            for(size_t toRow = 0; toRow < MAX_ROWS; ++toRow) {
-                for(size_t toCol = 0; toCol < MAX_COLS; ++toCol) {
-                    try {
-                        Square& from = m_board->getBoardAt(fromRow, fromCol);
-                        Square& to = m_board->getBoardAt(toRow, toCol);
-                        
-                        if(m_board->isLegalMove(from, to, piece)) {
-                            // Convert coordinates to UCI notation
-                            char fromFile = 'a' + fromCol;
-                            char fromRank = '8' - fromRow;
-                            char toFile = 'a' + toCol;
-                            char toRank = '8' - toRow;
-                            
-                            // Check if this is a pawn promotion move
-                            if(piece->getType() == Piece_T::PAWN && m_board->pawnCanPromote(to, piece->getColor())) {
-                                // Add all promotion options
-                                std::vector<char> promotions = {'q', 'r', 'b', 'n'};
-                                for(char promo : promotions) {
-                                    std::string move = std::string() + fromFile + fromRank + toFile + toRank + promo;
-                                    validMoves.push_back(move);
-                                }
-                            } else {
-                                std::string move = std::string() + fromFile + fromRank + toFile + toRank;
-                                validMoves.push_back(move);
-                            }
-                        }
-                    } catch (const std::exception& e) {
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-    
-    if (validMoves.empty()) {
-        return ""; // No valid moves (checkmate or stalemate)
-    }
-    
-    // Use time-based seed for randomness
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dist(0, validMoves.size() - 1);
-    
-    return validMoves[dist(gen)];
 }
 
 std::string ChessEngine::getFenStr() const{
