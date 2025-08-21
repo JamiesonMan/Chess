@@ -12,6 +12,9 @@
 #include "Rook.h"
 #include "chess_engine/FENString.h"
 
+/*
+    Contains board states, and the physical board object.
+*/
 class Board final {
     friend std::ostream& operator<<(std::ostream& output, const Board& board);
 
@@ -34,10 +37,10 @@ class Board final {
     };
 
     public:
-        enum class Castle_T : unsigned int { BLACK_SHORT, BLACK_LONG, WHITE_SHORT, WHITE_LONG }; // To determine a type of castle move.
-        
-
-        Board(); // Eventually include option to start at a position, FEN.
+        // To determine a type of castle move.
+        enum class Castle_T : unsigned int { BLACK_SHORT, BLACK_LONG, WHITE_SHORT, WHITE_LONG }; 
+    
+        Board();
         Board(const FENString& fen);
         Board(const std::array<std::array<char, MAX_COLS>, MAX_ROWS>& initBoardMapping);
 
@@ -86,6 +89,15 @@ class Board final {
         std::string coordsToNotation(size_t& row, size_t& col) const;
 
     private:
+        struct HypotheticalMoveValidator {
+            static bool canPieceAttackSquare(const Piece* piece, size_t pieceRow, size_t pieceCol, 
+                                           size_t targetRow, size_t targetCol, 
+                                           const HypotheticalMove& move, const Board& board);
+            
+            static bool isPathClear(size_t fromRow, size_t fromCol, size_t toRow, size_t toCol,
+                                  const HypotheticalMove& move, const Board& board);
+        };
+
         std::array<std::array<Square, MAX_COLS>, MAX_ROWS> board;
         std::array<std::array<std::unique_ptr<Piece>, MAX_COLS>, MAX_ROWS> pieces;
 
@@ -120,15 +132,6 @@ class Board final {
         bool _kingInCheck(const Piece* king, const std::array<std::array<std::unique_ptr<Piece>, MAX_COLS>, MAX_ROWS>& piecesCopy) const;
         bool _checkCheckmate() const;
         bool _checkDraw(Color_T) const;
-
-        struct HypotheticalMoveValidator {
-            static bool canPieceAttackSquare(const Piece* piece, size_t pieceRow, size_t pieceCol, 
-                                           size_t targetRow, size_t targetCol, 
-                                           const HypotheticalMove& move, const Board& board);
-            
-            static bool isPathClear(size_t fromRow, size_t fromCol, size_t toRow, size_t toCol,
-                                  const HypotheticalMove& move, const Board& board);
-        };
 
         // Automatically moves rook to correct location
         void _castleRookMove(Castle_T);

@@ -20,6 +20,15 @@
     #include <unistd.h>
 #endif
 
+/*
+Regarding UCI:
+    Can probably get its own struct called UCI which contains helpful UCI funcs.
+Regarding Perft:
+    We should speed this up and then take out default threaded option.
+    Check how big call stack is? Do we overflow? Like a million steps or something crazy
+        each with a stack fram containing a ChessEngine......
+*/
+
 const ChessEngine::EngineID ChessEngine::engineID = {"Wazzu Engine", "Jamieson Mansker"};
 const ChessEngine::EngineOptionNames ChessEngine::engineOptionNames = {"Threads"};
 
@@ -31,6 +40,7 @@ ChessEngine::ChessEngine(FENString fen) : m_fen{fen}, m_board{std::make_unique<B
         m_uciLog.flush();
     }
 }
+
 ChessEngine::~ChessEngine() {
     if (m_uciLog.is_open()) {
         m_uciLog << "=== Chess Engine Session Ended ===" << std::endl;
@@ -464,6 +474,7 @@ UCICommand_T ChessEngine::_commandHit(const std::string& in) const {
     }
 }
 
+// Actually is modifying the m_board states... TODO
 Game_Status ChessEngine::isValidMove(MoveCoordsData move) {
     Square& from = m_board->getBoardAt(move.fromRow, move.fromCol);
     Square& to = m_board->getBoardAt(move.toRow, move.toCol);
@@ -526,10 +537,13 @@ void ChessEngine::_printInfo(const std::string& info) const {
     
 }
 
+// pubic version
 unsigned long int ChessEngine::perft(unsigned int depth) {
     return _perft(depth, true);
 }
 
+// recursive, greatly inefficient due to us making a ChessEngine obj each step.
+// Multi threaded inconsistency? TODO
 unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
     if (depth == 0) {
         return 1;
@@ -551,9 +565,11 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
     std::cout << "Calculating...\n" << std::endl;
     
     // Collect all valid moves first
+    // TODO THIS SHOULDN"T BE A CHESS ENGINE THING. should be a member of m_board in Board.
     std::vector<std::tuple<MoveCoordsData, std::string, Piece_T>> validMoves;
     
-    // Generate all possible moves for the current player
+    // Generate all possible moves for the current player.
+    // O(n^4)? TRASH TODO, add states in Board to improve.
     for(size_t fromRow = 0; fromRow < MAX_ROWS; ++fromRow) {
         for(size_t fromCol = 0; fromCol < MAX_COLS; ++fromCol) {
             const Piece* piece = m_board->getPieceAt(fromRow, fromCol);
@@ -610,6 +626,7 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
     }
     
     // Process moves in parallel
+    // Each initial move will get its own thread...
     std::vector<std::future<std::pair<std::string, unsigned long int>>> futures;
     std::string currentFen = m_fen.getFen();
     
@@ -653,6 +670,7 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
     return totalNodes;
 }
 
+// Does the recursive function for the thread.
 unsigned long int ChessEngine::_perftSingleThreaded(unsigned int depth) {
     if (depth == 0) {
         return 1;
