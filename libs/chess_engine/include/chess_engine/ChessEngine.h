@@ -6,7 +6,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <fstream>
-#include <queue>
+#include <queue> // Command work queue
 #include "Types.h"
 
 class Board;

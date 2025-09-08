@@ -66,7 +66,7 @@ class FENString {
         static constexpr std::array<char, 12> m_charPieces{'r', 'n', 'b', 'q', 'k', 'p', 'R', 'N', 'B', 'Q', 'K', 'P'};
         static constexpr std::array<char, 5> m_castleRights{'k', 'q', 'K', 'Q', '-'};
         static constexpr std::array<char, 3> m_activeTurns{'w', 'b', '-'};
-        static constexpr size_t MIN_FEN_LENGTH{20};
+        static constexpr size_t MIN_FEN_LENGTH{19};
         static constexpr size_t MAX_FEN_LENGTH{100};
         static constexpr size_t maxNumOfSpaceDelim{5};
         static constexpr size_t MAX_HALF_MOVES{200}; // Allow games to continue past 50-move rule

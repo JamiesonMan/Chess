@@ -569,7 +569,7 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
     std::vector<std::tuple<MoveCoordsData, std::string, Piece_T>> validMoves;
     
     // Generate all possible moves for the current player.
-    // O(n^4)? TRASH TODO, add states in Board to improve.
+    // TODO, add states in Board to improve.
     for(size_t fromRow = 0; fromRow < MAX_ROWS; ++fromRow) {
         for(size_t fromCol = 0; fromCol < MAX_COLS; ++fromCol) {
             const Piece* piece = m_board->getPieceAt(fromRow, fromCol);
@@ -635,7 +635,7 @@ unsigned long int ChessEngine::_perft(unsigned int depth, bool showMoves) {
         const auto& notation = std::get<1>(moveData);
         const auto& promotionPiece = std::get<2>(moveData);
         
-        futures.push_back(std::async(std::launch::async, [this, move, notation, promotionPiece, currentFen, depth]() -> std::pair<std::string, unsigned long int> {
+        futures.push_back(std::async(std::launch::async, [this, move, notation, promotionPiece, currentFen, depth]()-> std::pair<std::string, unsigned long int> {
             try {
                 ChessEngine engine{FENString(currentFen)};
                 
