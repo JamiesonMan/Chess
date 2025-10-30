@@ -1,6 +1,9 @@
-# Chess Engine Project (OUTDATED TODO - UPDATE THE README WITH NEW PROJECT STRUCT)
+# Chess Engine Project
 
 A modular chess application with separate libraries for game logic and AI engine development.
+Works with Universal Chess Interface allowing it to attach to many prebuilt chess GUI's.
+Computationally controllable with number of threads.
+Has a dev mode the application can be launched into allowing for base game access. Default will be launched into UCI mode. 
 
 ## Project Structure
 
